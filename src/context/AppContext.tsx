@@ -31,7 +31,9 @@ interface AppContextType extends AppState {
   createWeeklyPlan: (weekStartDate: string) => string;
   getWeeklyPlan: (weekStartDate: string) => WeeklyPlan | undefined;
   getMealSlots: (planId: string) => WeeklyMealSlot[];
-  setMealSlot: (planId: string, day: DayOfWeek, meal: MealType, recipeId: string | null, notes?: string) => void;
+  setMealSlot: (planId: string, day: DayOfWeek, meal: MealType, recipeIds: string[], notes?: string) => void;
+  addRecipeToSlot: (planId: string, day: DayOfWeek, meal: MealType, recipeId: string) => void;
+  removeRecipeFromSlot: (planId: string, day: DayOfWeek, meal: MealType, recipeId: string) => void;
   finalizePlan: (planId: string) => void;
   // Swipe
   addSwipeDecision: (decision: Omit<SwipeDecision, 'id' | 'householdId' | 'createdAt'>) => void;
@@ -128,7 +130,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const slots: WeeklyMealSlot[] = [];
       for (const day of DAYS_OF_WEEK) {
         for (const meal of MEAL_TYPES) {
-          slots.push({ id: genId(), weeklyPlanId: id, dayOfWeek: day, mealType: meal, recipeId: null, notes: '' });
+          slots.push({ id: genId(), weeklyPlanId: id, dayOfWeek: day, mealType: meal, recipeIds: [], notes: '' });
         }
       }
       return { ...prev, weeklyPlans: [...prev.weeklyPlans, plan], mealSlots: [...prev.mealSlots, ...slots] };
@@ -144,12 +146,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return state.mealSlots.filter(s => s.weeklyPlanId === planId);
   }, [state.mealSlots]);
 
-  const setMealSlot = useCallback((planId: string, day: DayOfWeek, meal: MealType, recipeId: string | null, notes?: string) => {
+  const setMealSlot = useCallback((planId: string, day: DayOfWeek, meal: MealType, recipeIds: string[], notes?: string) => {
     setState(prev => ({
       ...prev,
       mealSlots: prev.mealSlots.map(s =>
         s.weeklyPlanId === planId && s.dayOfWeek === day && s.mealType === meal
-          ? { ...s, recipeId, notes: notes ?? s.notes }
+          ? { ...s, recipeIds, notes: notes ?? s.notes }
+          : s
+      ),
+    }));
+  }, []);
+
+  const addRecipeToSlot = useCallback((planId: string, day: DayOfWeek, meal: MealType, recipeId: string) => {
+    setState(prev => ({
+      ...prev,
+      mealSlots: prev.mealSlots.map(s =>
+        s.weeklyPlanId === planId && s.dayOfWeek === day && s.mealType === meal && !s.recipeIds.includes(recipeId)
+          ? { ...s, recipeIds: [...s.recipeIds, recipeId] }
+          : s
+      ),
+    }));
+  }, []);
+
+  const removeRecipeFromSlot = useCallback((planId: string, day: DayOfWeek, meal: MealType, recipeId: string) => {
+    setState(prev => ({
+      ...prev,
+      mealSlots: prev.mealSlots.map(s =>
+        s.weeklyPlanId === planId && s.dayOfWeek === day && s.mealType === meal
+          ? { ...s, recipeIds: s.recipeIds.filter(id => id !== recipeId) }
           : s
       ),
     }));
@@ -200,6 +224,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       getWeeklyPlan,
       getMealSlots,
       setMealSlot,
+      addRecipeToSlot,
+      removeRecipeFromSlot,
       finalizePlan,
       addSwipeDecision,
       getSwipeDecisions,

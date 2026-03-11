@@ -8,13 +8,14 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ChevronLeft, ChevronRight, Sparkles, Save, Check, X, Copy, Wand2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sparkles, Save, Check, X, Copy, Wand2, Download } from 'lucide-react';
+import { generateWeeklyPlanPdf } from '@/lib/generatePlanPdf';
 import AppLayout from '@/components/AppLayout';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
 export default function WeeklyPlannerPage() {
-  const { recipes, familyMembers, weeklyPlans, mealSlots, createWeeklyPlan, getWeeklyPlan, getMealSlots, setMealSlot, finalizePlan, swipeDecisions } = useAppContext();
+  const { recipes, familyMembers, weeklyPlans, mealSlots, createWeeklyPlan, getWeeklyPlan, getMealSlots, setMealSlot, finalizePlan, swipeDecisions, household } = useAppContext();
 
   const [currentMonday, setCurrentMonday] = useState(() => getMonday(new Date()));
   const weekKey = formatDateKey(currentMonday);
@@ -134,6 +135,20 @@ export default function WeeklyPlannerPage() {
           {plan && (
             <Button onClick={handleFinalize} size="sm" disabled={plan.status === 'finalized'}>
               <Check className="mr-1 h-4 w-4" /> {plan.status === 'finalized' ? 'Finalized' : 'Finalize Plan'}
+            </Button>
+          )}
+          {plan?.status === 'finalized' && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => generateWeeklyPlanPdf({
+                weekLabel: formatWeekLabel(currentMonday),
+                householdName: household?.name ?? 'Family',
+                slots,
+                recipes,
+              })}
+            >
+              <Download className="mr-1 h-4 w-4" /> Download PDF
             </Button>
           )}
           <Badge variant="outline" className="text-xs self-center">

@@ -32,7 +32,7 @@ export function generateWeeklyPlanPdf({ weekLabel, householdName, slots, recipes
   const head = [['Day', '🌅 Breakfast', '☀️ Lunch', '🌙 Dinner']];
   const body = DAYS_OF_WEEK.map(day => [
     day,
-    ...MEAL_TYPES.map(meal => getRecipeTitle(day, meal)),
+    ...MEAL_TYPES.map(meal => getRecipeTitles(day, meal)),
   ]);
 
   autoTable(doc, {

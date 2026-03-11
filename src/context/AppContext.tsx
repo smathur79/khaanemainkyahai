@@ -224,6 +224,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       getWeeklyPlan,
       getMealSlots,
       setMealSlot,
+      addRecipeToSlot,
+      removeRecipeFromSlot,
       finalizePlan,
       addSwipeDecision,
       getSwipeDecisions,

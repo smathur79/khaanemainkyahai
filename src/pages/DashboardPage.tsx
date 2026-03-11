@@ -77,7 +77,7 @@ export default function DashboardPage() {
               <div className="grid grid-cols-7 gap-1 text-xs text-center">
                 {DAYS_OF_WEEK.map(day => {
                   const daySlots = currentSlots.filter(s => s.dayOfWeek === day);
-                  const filled = daySlots.filter(s => s.recipeId).length;
+                  const filled = daySlots.filter(s => s.recipeIds.length > 0).length;
                   return (
                     <div key={day} className="space-y-0.5">
                       <div className="font-medium text-muted-foreground">{day.slice(0, 3)}</div>

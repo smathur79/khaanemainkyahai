@@ -12,11 +12,12 @@ interface GeneratePdfOptions {
 export function generateWeeklyPlanPdf({ weekLabel, householdName, slots, recipes }: GeneratePdfOptions) {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
 
-  const getRecipeTitle = (day: DayOfWeek, meal: MealType): string => {
+  const getRecipeTitles = (day: DayOfWeek, meal: MealType): string => {
     const slot = slots.find(s => s.dayOfWeek === day && s.mealType === meal);
-    if (!slot?.recipeId) return '—';
-    const recipe = recipes.find(r => r.id === slot.recipeId);
-    return recipe?.title ?? '—';
+    if (!slot || slot.recipeIds.length === 0) return '—';
+    return slot.recipeIds
+      .map(id => recipes.find(r => r.id === id)?.title ?? '—')
+      .join('\n');
   };
 
   // Title

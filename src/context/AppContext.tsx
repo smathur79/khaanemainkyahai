@@ -130,7 +130,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const slots: WeeklyMealSlot[] = [];
       for (const day of DAYS_OF_WEEK) {
         for (const meal of MEAL_TYPES) {
-          slots.push({ id: genId(), weeklyPlanId: id, dayOfWeek: day, mealType: meal, recipeId: null, notes: '' });
+          slots.push({ id: genId(), weeklyPlanId: id, dayOfWeek: day, mealType: meal, recipeIds: [], notes: '' });
         }
       }
       return { ...prev, weeklyPlans: [...prev.weeklyPlans, plan], mealSlots: [...prev.mealSlots, ...slots] };

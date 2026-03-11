@@ -137,6 +137,20 @@ export default function WeeklyPlannerPage() {
               <Check className="mr-1 h-4 w-4" /> {plan.status === 'finalized' ? 'Finalized' : 'Finalize Plan'}
             </Button>
           )}
+          {plan?.status === 'finalized' && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => generateWeeklyPlanPdf({
+                weekLabel: formatWeekLabel(currentMonday),
+                householdName: household?.name ?? 'Family',
+                slots,
+                recipes,
+              })}
+            >
+              <Download className="mr-1 h-4 w-4" /> Download PDF
+            </Button>
+          )}
           <Badge variant="outline" className="text-xs self-center">
             {plan ? (plan.status === 'finalized' ? '✅ Finalized' : '📝 Draft') : 'No plan'}
           </Badge>

@@ -67,7 +67,7 @@ export interface WeeklyMealSlot {
   weeklyPlanId: string;
   dayOfWeek: DayOfWeek;
   mealType: MealType;
-  recipeId: string | null;
+  recipeIds: string[];
   notes: string;
 }
 

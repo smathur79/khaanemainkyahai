@@ -16,7 +16,7 @@ export default function DashboardPage() {
   const weekKey = formatDateKey(monday);
   const currentPlan = weeklyPlans.find(p => p.weekStartDate === weekKey);
   const currentSlots = currentPlan ? mealSlots.filter(s => s.weeklyPlanId === currentPlan.id) : [];
-  const filledSlots = currentSlots.filter(s => s.recipeId);
+  const filledSlots = currentSlots.filter(s => s.recipeIds.length > 0);
   const totalSlots = 21;
   const favoriteRecipes = recipes.filter(r => r.favorite);
   const recentRecipes = recipes.slice(-5);

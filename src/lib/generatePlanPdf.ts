@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { DAYS_OF_WEEK, MEAL_TYPES, DayOfWeek, MealType, Recipe, WeeklyMealSlot } from '@/types/models';
+import { DAYS_OF_WEEK, PLANNER_MEAL_TYPES, DayOfWeek, MealType, Recipe, WeeklyMealSlot } from '@/types/models';
 
 interface GeneratePdfOptions {
   weekLabel: string;
@@ -21,11 +21,9 @@ export function generateWeeklyPlanPdf({ weekLabel, householdName, slots, recipes
       .join('\n');
   };
 
-  // Header with warm accent bar
   doc.setFillColor(255, 183, 77);
   doc.rect(0, 0, 210, 4, 'F');
 
-  // Title
   doc.setFontSize(18);
   doc.setTextColor(40, 40, 40);
   doc.text(`${householdName} — Weekly Meal Plan`, 105, 18, { align: 'center' });
@@ -33,11 +31,10 @@ export function generateWeeklyPlanPdf({ weekLabel, householdName, slots, recipes
   doc.setTextColor(100, 100, 100);
   doc.text(weekLabel, 105, 25, { align: 'center' });
 
-  // Table
   const head = [['Day', 'Breakfast', 'Lunch', 'Dinner']];
   const body = DAYS_OF_WEEK.map(day => [
     day,
-    ...MEAL_TYPES.map(meal => getRecipeTitles(day, meal)),
+    ...PLANNER_MEAL_TYPES.map(meal => getRecipeTitles(day, meal)),
   ]);
 
   autoTable(doc, {
@@ -72,7 +69,6 @@ export function generateWeeklyPlanPdf({ weekLabel, householdName, slots, recipes
     margin: { left: 12, right: 12 },
   });
 
-  // Footer
   const pageHeight = doc.internal.pageSize.getHeight();
   doc.setFontSize(7);
   doc.setTextColor(170, 170, 170);

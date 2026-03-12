@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { Household, FamilyMember, Recipe, WeeklyPlan, WeeklyMealSlot, SwipeDecision, DayOfWeek, MealType, DAYS_OF_WEEK, MEAL_TYPES } from '@/types/models';
+import { Household, FamilyMember, Recipe, WeeklyPlan, WeeklyMealSlot, SwipeDecision, DayOfWeek, MealType, DAYS_OF_WEEK, PLANNER_MEAL_TYPES } from '@/types/models';
 import { seedRecipes } from '@/data/seedRecipes';
 
 function genId() {
@@ -16,18 +16,14 @@ interface AppState {
 }
 
 interface AppContextType extends AppState {
-  // Household
   setupHousehold: (name: string) => string;
-  // Family
   addFamilyMember: (member: Omit<FamilyMember, 'id' | 'householdId'>) => void;
   updateFamilyMember: (id: string, updates: Partial<FamilyMember>) => void;
   removeFamilyMember: (id: string) => void;
-  // Recipes
   addRecipe: (recipe: Omit<Recipe, 'id' | 'householdId' | 'createdAt' | 'updatedAt'>) => string;
   updateRecipe: (id: string, updates: Partial<Recipe>) => void;
   deleteRecipe: (id: string) => void;
   toggleFavorite: (id: string) => void;
-  // Weekly Plans
   createWeeklyPlan: (weekStartDate: string) => string;
   getWeeklyPlan: (weekStartDate: string) => WeeklyPlan | undefined;
   getMealSlots: (planId: string) => WeeklyMealSlot[];
@@ -36,17 +32,27 @@ interface AppContextType extends AppState {
   removeRecipeFromSlot: (planId: string, day: DayOfWeek, meal: MealType, recipeId: string) => void;
   reorderRecipeInSlot: (planId: string, day: DayOfWeek, meal: MealType, fromIndex: number, toIndex: number) => void;
   finalizePlan: (planId: string) => void;
-  // Swipe
   addSwipeDecision: (decision: Omit<SwipeDecision, 'id' | 'householdId' | 'createdAt'>) => void;
   getSwipeDecisions: (weekStartDate: string) => SwipeDecision[];
   clearSwipeDecisions: (weekStartDate: string) => void;
-  // helpers
   isOnboarded: boolean;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const STORAGE_KEY = 'family-meal-planner-state';
+
+// Map old foodType values to new RecipeFoodType
+function migrateFoodType(old: string): string {
+  switch (old) {
+    case 'Vegetarian': return 'vegetarian';
+    case 'Vegan': return 'vegan';
+    case 'Eggetarian': return 'egg';
+    case 'Non-Vegetarian': return 'chicken';
+    case 'Other': return 'vegetarian';
+    default: return old;
+  }
+}
 
 function loadState(): AppState {
   const empty: AppState = { household: null, familyMembers: [], recipes: [], weeklyPlans: [], mealSlots: [], swipeDecisions: [] };
@@ -61,10 +67,23 @@ function loadState(): AppState {
           recipeIds: s.recipeIds ?? (s.recipeId ? [s.recipeId] : []),
         }));
       }
+      // Migrate old recipe foodType and add new fields with defaults
+      if (parsed.recipes) {
+        parsed.recipes = parsed.recipes.map((r: any) => ({
+          ...r,
+          foodType: migrateFoodType(r.foodType),
+          subCuisine: r.subCuisine ?? '',
+          healthTag: r.healthTag ?? 'balanced',
+          effort: r.effort ?? (r.prepTimeMinutes <= 15 ? 'quick' : r.prepTimeMinutes <= 30 ? 'medium' : 'weekend'),
+          moodTag: r.moodTag ?? 'comfort',
+          sourceName: r.sourceName ?? 'Seed Library',
+          sourceLink: r.sourceLink ?? '',
+          isLinkOnly: r.isLinkOnly ?? false,
+        }));
+      }
       return { ...empty, ...parsed };
     }
   } catch {
-    // If localStorage is corrupted, clear it and start fresh
     localStorage.removeItem(STORAGE_KEY);
   }
   return empty;
@@ -82,7 +101,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const setupHousehold = useCallback((name: string) => {
     const hid = genId();
     const household: Household = { id: hid, name, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
-    // seed recipes
     const recipes: Recipe[] = seedRecipes.map(r => ({ ...r, id: genId(), householdId: hid }));
     setState(prev => ({ ...prev, household, recipes }));
     return hid;
@@ -144,7 +162,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const plan: WeeklyPlan = { id, householdId: prev.household.id, weekStartDate, status: 'draft', createdAt: now, updatedAt: now };
       const slots: WeeklyMealSlot[] = [];
       for (const day of DAYS_OF_WEEK) {
-        for (const meal of MEAL_TYPES) {
+        for (const meal of PLANNER_MEAL_TYPES) {
           slots.push({ id: genId(), weeklyPlanId: id, dayOfWeek: day, mealType: meal, recipeIds: [], notes: '' });
         }
       }

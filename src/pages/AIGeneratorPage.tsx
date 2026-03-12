@@ -33,7 +33,7 @@ function generateMockRecipes(cuisine: string, mealType: string, ingredients: str
       description: `A delicious ${cuisine.toLowerCase()}-inspired ${mealType} bowl packed with flavor and nutrition.`,
       mealTypes: [mealType as MealType],
       cuisine,
-      foodType: 'Vegetarian',
+      foodType: 'vegetarian',
       prepTimeMinutes: Math.min(maxPrepTime, 25),
       difficulty: 'Easy',
       ingredients: ingredients ? ingredients.split(',').map(s => s.trim()) : ['Rice', 'Mixed vegetables', 'Spices', 'Fresh herbs'],
@@ -45,7 +45,7 @@ function generateMockRecipes(cuisine: string, mealType: string, ingredients: str
       description: `A quick and easy ${cuisine.toLowerCase()} ${mealType} that comes together in minutes.`,
       mealTypes: [mealType as MealType],
       cuisine,
-      foodType: 'Vegetarian',
+      foodType: 'vegetarian',
       prepTimeMinutes: Math.min(maxPrepTime, 15),
       difficulty: 'Easy',
       ingredients: ingredients ? ingredients.split(',').map(s => s.trim()) : ['Bread/Tortilla', 'Fresh vegetables', 'Cheese', 'Seasoning'],
@@ -57,7 +57,7 @@ function generateMockRecipes(cuisine: string, mealType: string, ingredients: str
       description: `${cuisine} flavors meet comfort food in this delightful ${mealType} recipe.`,
       mealTypes: [mealType as MealType],
       cuisine,
-      foodType: 'Vegetarian',
+      foodType: 'vegetarian',
       prepTimeMinutes: Math.min(maxPrepTime, 30),
       difficulty: 'Medium',
       ingredients: ingredients ? ingredients.split(',').map(s => s.trim()) : ['Main protein/grain', 'Onion', 'Tomato', 'Spice blend', 'Oil'],
@@ -69,7 +69,7 @@ function generateMockRecipes(cuisine: string, mealType: string, ingredients: str
       description: `A hearty, warming ${mealType} with ${cuisine.toLowerCase()} influence.`,
       mealTypes: [mealType as MealType],
       cuisine,
-      foodType: 'Vegetarian',
+      foodType: 'vegetarian',
       prepTimeMinutes: Math.min(maxPrepTime, 35),
       difficulty: 'Easy',
       ingredients: ingredients ? ingredients.split(',').map(s => s.trim()) : ['Potatoes/Lentils', 'Mixed vegetables', 'Broth', 'Herbs', 'Salt'],
@@ -81,7 +81,7 @@ function generateMockRecipes(cuisine: string, mealType: string, ingredients: str
       description: `A creative fusion dish combining ${cuisine.toLowerCase()} flavors with modern cooking.`,
       mealTypes: [mealType as MealType],
       cuisine,
-      foodType: 'Vegetarian',
+      foodType: 'vegetarian',
       prepTimeMinutes: Math.min(maxPrepTime, 20),
       difficulty: 'Easy',
       ingredients: ingredients ? ingredients.split(',').map(s => s.trim()) : ['Base grain/noodles', 'Protein', 'Sauce', 'Garnish'],
@@ -107,7 +107,6 @@ export default function AIGeneratorPage() {
   const handleGenerate = async () => {
     setLoading(true);
     setSavedIds(new Set());
-    // Simulate AI delay
     await new Promise(r => setTimeout(r, 1500));
     const generated = generateMockRecipes(cuisine, mealType, ingredients, parseInt(maxPrepTime) || 30, parseInt(count) || 3);
     setResults(generated);
@@ -119,6 +118,13 @@ export default function AIGeneratorPage() {
       ...recipe,
       foodType: recipe.foodType as any,
       difficulty: recipe.difficulty as any,
+      subCuisine: '',
+      healthTag: 'balanced',
+      effort: 'medium',
+      moodTag: 'comfort',
+      sourceName: 'AI Generated',
+      sourceLink: '',
+      isLinkOnly: false,
       favorite: false,
       source: 'ai',
     });
@@ -176,7 +182,6 @@ export default function AIGeneratorPage() {
           </Button>
         </Card>
 
-        {/* Results */}
         {results.length > 0 && (
           <div className="space-y-3">
             <h2 className="text-lg font-semibold">Generated Recipes</h2>
@@ -197,7 +202,7 @@ export default function AIGeneratorPage() {
                 <div className="flex flex-wrap gap-1">
                   <Badge variant="outline" className="text-xs capitalize">{recipe.mealTypes[0]}</Badge>
                   <Badge variant="secondary" className="text-xs">{recipe.cuisine}</Badge>
-                  <Badge variant="secondary" className="text-xs">{recipe.foodType}</Badge>
+                  <Badge variant="secondary" className="text-xs capitalize">{recipe.foodType}</Badge>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Clock className="h-3 w-3" /> {recipe.prepTimeMinutes} min · {recipe.difficulty}

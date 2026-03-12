@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 import { useAppContext } from '@/context/AppContext';
-import { DAYS_OF_WEEK, MEAL_TYPES, DayOfWeek, MealType } from '@/types/models';
+import { DAYS_OF_WEEK, PLANNER_MEAL_TYPES, DayOfWeek, MealType } from '@/types/models';
 import { getMonday, formatWeekLabel, formatDateKey, addWeeks } from '@/lib/dateUtils';
 import { getRecommendations } from '@/lib/recommendations';
 import { Button } from '@/components/ui/button';
@@ -58,7 +58,7 @@ export default function WeeklyPlannerPage() {
     const likedDecisions = swipeDecisions.filter(d => d.weekStartDate === weekKey && d.decision === 'liked');
 
     for (const day of DAYS_OF_WEEK) {
-      for (const meal of MEAL_TYPES) {
+      for (const meal of PLANNER_MEAL_TYPES) {
         const existing = slots.find(s => s.dayOfWeek === day && s.mealType === meal);
         if (existing && existing.recipeIds.length > 0) {
           usedIds.push(...existing.recipeIds);
@@ -160,7 +160,7 @@ export default function WeeklyPlannerPage() {
             {/* Header */}
             <div className="grid grid-cols-4 gap-2 mb-2">
               <div className="font-semibold text-sm text-muted-foreground p-2">Day</div>
-              {MEAL_TYPES.map(m => (
+              {PLANNER_MEAL_TYPES.map(m => (
                 <div key={m} className="font-semibold text-sm text-muted-foreground p-2 capitalize text-center">{m}</div>
               ))}
             </div>
@@ -169,7 +169,7 @@ export default function WeeklyPlannerPage() {
             {DAYS_OF_WEEK.map(day => (
               <div key={day} className="grid grid-cols-4 gap-2 mb-2">
                 <div className="flex items-center p-2 font-medium text-sm">{day}</div>
-                {MEAL_TYPES.map(meal => {
+                {PLANNER_MEAL_TYPES.map(meal => {
                   const slotRecipes = getSlotRecipes(day, meal);
                   const slotRecipeIds = new Set(slotRecipes.map(r => r.id));
                   const hasRecipes = slotRecipes.length > 0;
@@ -194,7 +194,6 @@ export default function WeeklyPlannerPage() {
                       <PopoverContent className="w-56 p-2" align="start">
                         <div className="text-xs font-semibold mb-2 capitalize">{day} {meal}</div>
                         <div className="max-h-56 overflow-y-auto space-y-1">
-                          {/* Current recipes with remove buttons */}
                           {hasRecipes && (
                             <>
                               {slotRecipes.map((r, idx) => (
@@ -226,7 +225,6 @@ export default function WeeklyPlannerPage() {
                               <div className="border-t my-1" />
                             </>
                           )}
-                          {/* Add more recipes */}
                           <div className="text-[10px] text-muted-foreground uppercase tracking-wide px-2 pt-1">
                             <Plus className="h-3 w-3 inline mr-1" />Add recipe
                           </div>

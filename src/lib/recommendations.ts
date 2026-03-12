@@ -6,6 +6,22 @@ interface ScoredRecipe {
   reasons: string[];
 }
 
+// Map family member food type to compatible recipe food types
+function isFoodTypeCompatible(memberFoodType: string, recipeFoodType: string): boolean {
+  switch (memberFoodType) {
+    case 'Vegan':
+      return recipeFoodType === 'vegan';
+    case 'Vegetarian':
+      return recipeFoodType === 'vegan' || recipeFoodType === 'vegetarian';
+    case 'Eggetarian':
+      return recipeFoodType === 'vegan' || recipeFoodType === 'vegetarian' || recipeFoodType === 'egg';
+    case 'Non-Vegetarian':
+      return true; // eats everything
+    default:
+      return true;
+  }
+}
+
 export function scoreRecipe(
   recipe: Recipe,
   members: FamilyMember[],
@@ -22,6 +38,11 @@ export function scoreRecipe(
     return { recipe, score: -1000, reasons: ['Wrong meal type'] };
   }
 
+  // Skip link-only recipes
+  if (recipe.isLinkOnly) {
+    return { recipe, score: -1000, reasons: ['Link-only recipe'] };
+  }
+
   // Exclude if violates any exclusions
   for (const member of members) {
     for (const excl of member.exclusions) {
@@ -32,10 +53,12 @@ export function scoreRecipe(
     }
   }
 
-  // Food type compatibility
+  // Food type compatibility — check against strictest member
   const strictMembers = members.filter(m => m.foodType === 'Vegan' || m.foodType === 'Vegetarian');
-  if (strictMembers.length > 0 && (recipe.foodType === 'Non-Vegetarian' || recipe.foodType === 'Eggetarian')) {
-    score -= 50;
+  for (const member of strictMembers) {
+    if (!isFoodTypeCompatible(member.foodType, recipe.foodType)) {
+      score -= 50;
+    }
   }
 
   // Preference matching
@@ -82,9 +105,15 @@ export function scoreRecipe(
 
   // Weekday preference for quick meals
   const weekdayIndex = DAYS_OF_WEEK.indexOf(dayOfWeek);
-  if (weekdayIndex < 5 && recipe.prepTimeMinutes <= 20) {
+  if (weekdayIndex < 5 && recipe.effort === 'quick') {
     score += 10;
     reasons.push('Quick weekday option');
+  }
+
+  // Weekend bonus for weekend-effort recipes
+  if (weekdayIndex >= 5 && recipe.effort === 'weekend') {
+    score += 10;
+    reasons.push('Perfect for the weekend');
   }
 
   if (reasons.length === 0) {

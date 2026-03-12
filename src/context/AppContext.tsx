@@ -49,11 +49,25 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 const STORAGE_KEY = 'family-meal-planner-state';
 
 function loadState(): AppState {
+  const empty: AppState = { household: null, familyMembers: [], recipes: [], weeklyPlans: [], mealSlots: [], swipeDecisions: [] };
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) return JSON.parse(saved);
-  } catch {}
-  return { household: null, familyMembers: [], recipes: [], weeklyPlans: [], mealSlots: [], swipeDecisions: [] };
+    if (saved) {
+      const parsed = JSON.parse(saved) as AppState;
+      // Migrate old recipeId format to recipeIds array
+      if (parsed.mealSlots) {
+        parsed.mealSlots = parsed.mealSlots.map((s: any) => ({
+          ...s,
+          recipeIds: s.recipeIds ?? (s.recipeId ? [s.recipeId] : []),
+        }));
+      }
+      return { ...empty, ...parsed };
+    }
+  } catch {
+    // If localStorage is corrupted, clear it and start fresh
+    localStorage.removeItem(STORAGE_KEY);
+  }
+  return empty;
 }
 
 function saveState(state: AppState) {

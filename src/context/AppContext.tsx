@@ -180,6 +180,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }));
   }, []);
 
+  const reorderRecipeInSlot = useCallback((planId: string, day: DayOfWeek, meal: MealType, fromIndex: number, toIndex: number) => {
+    setState(prev => ({
+      ...prev,
+      mealSlots: prev.mealSlots.map(s => {
+        if (s.weeklyPlanId !== planId || s.dayOfWeek !== day || s.mealType !== meal) return s;
+        const ids = [...s.recipeIds];
+        const [moved] = ids.splice(fromIndex, 1);
+        ids.splice(toIndex, 0, moved);
+        return { ...s, recipeIds: ids };
+      }),
+    }));
+  }, []);
+
   const finalizePlan = useCallback((planId: string) => {
     setState(prev => ({
       ...prev,

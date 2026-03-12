@@ -34,6 +34,7 @@ interface AppContextType extends AppState {
   setMealSlot: (planId: string, day: DayOfWeek, meal: MealType, recipeIds: string[], notes?: string) => void;
   addRecipeToSlot: (planId: string, day: DayOfWeek, meal: MealType, recipeId: string) => void;
   removeRecipeFromSlot: (planId: string, day: DayOfWeek, meal: MealType, recipeId: string) => void;
+  reorderRecipeInSlot: (planId: string, day: DayOfWeek, meal: MealType, fromIndex: number, toIndex: number) => void;
   finalizePlan: (planId: string) => void;
   // Swipe
   addSwipeDecision: (decision: Omit<SwipeDecision, 'id' | 'householdId' | 'createdAt'>) => void;
@@ -179,6 +180,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }));
   }, []);
 
+  const reorderRecipeInSlot = useCallback((planId: string, day: DayOfWeek, meal: MealType, fromIndex: number, toIndex: number) => {
+    setState(prev => ({
+      ...prev,
+      mealSlots: prev.mealSlots.map(s => {
+        if (s.weeklyPlanId !== planId || s.dayOfWeek !== day || s.mealType !== meal) return s;
+        const ids = [...s.recipeIds];
+        const [moved] = ids.splice(fromIndex, 1);
+        ids.splice(toIndex, 0, moved);
+        return { ...s, recipeIds: ids };
+      }),
+    }));
+  }, []);
+
   const finalizePlan = useCallback((planId: string) => {
     setState(prev => ({
       ...prev,
@@ -226,6 +240,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setMealSlot,
       addRecipeToSlot,
       removeRecipeFromSlot,
+      reorderRecipeInSlot,
       finalizePlan,
       addSwipeDecision,
       getSwipeDecisions,

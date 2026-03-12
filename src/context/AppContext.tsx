@@ -34,6 +34,7 @@ interface AppContextType extends AppState {
   setMealSlot: (planId: string, day: DayOfWeek, meal: MealType, recipeIds: string[], notes?: string) => void;
   addRecipeToSlot: (planId: string, day: DayOfWeek, meal: MealType, recipeId: string) => void;
   removeRecipeFromSlot: (planId: string, day: DayOfWeek, meal: MealType, recipeId: string) => void;
+  reorderRecipeInSlot: (planId: string, day: DayOfWeek, meal: MealType, fromIndex: number, toIndex: number) => void;
   finalizePlan: (planId: string) => void;
   // Swipe
   addSwipeDecision: (decision: Omit<SwipeDecision, 'id' | 'householdId' | 'createdAt'>) => void;

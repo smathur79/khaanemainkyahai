@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ChevronUp, ChevronDown } from 'lucide-react';
 import { useAppContext } from '@/context/AppContext';
 import { DAYS_OF_WEEK, MEAL_TYPES, DayOfWeek, MealType } from '@/types/models';
 import { getMonday, formatWeekLabel, formatDateKey, addWeeks } from '@/lib/dateUtils';

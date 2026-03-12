@@ -15,7 +15,7 @@ import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
 export default function WeeklyPlannerPage() {
-  const { recipes, familyMembers, weeklyPlans, mealSlots, createWeeklyPlan, getWeeklyPlan, getMealSlots, setMealSlot, addRecipeToSlot, removeRecipeFromSlot, finalizePlan, swipeDecisions, household } = useAppContext();
+  const { recipes, familyMembers, weeklyPlans, mealSlots, createWeeklyPlan, getWeeklyPlan, getMealSlots, setMealSlot, addRecipeToSlot, removeRecipeFromSlot, reorderRecipeInSlot, finalizePlan, swipeDecisions, household } = useAppContext();
 
   const [currentMonday, setCurrentMonday] = useState(() => getMonday(new Date()));
   const weekKey = formatDateKey(currentMonday);

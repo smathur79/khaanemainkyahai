@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/context/AppContext';
-import { MealType, MEAL_TYPES, DAYS_OF_WEEK } from '@/types/models';
+import { MealType, PLANNER_MEAL_TYPES, DAYS_OF_WEEK } from '@/types/models';
 import { getMonday, formatDateKey } from '@/lib/dateUtils';
 import { getRecommendations } from '@/lib/recommendations';
 import { Card } from '@/components/ui/card';
@@ -52,7 +52,7 @@ export default function ShortlistPage() {
         </div>
 
         <div className="flex justify-center gap-2">
-          {MEAL_TYPES.map(m => (
+          {PLANNER_MEAL_TYPES.map(m => (
             <Button
               key={m}
               variant={mealFilter === m ? 'default' : 'outline'}
@@ -85,17 +85,18 @@ export default function ShortlistPage() {
                 <Card className="card-warm p-6 space-y-3">
                   <div className="flex items-start justify-between">
                     <h2 className="text-xl font-bold">{current.recipe.title}</h2>
-                    <Badge variant="secondary" className="text-xs">{current.recipe.foodType}</Badge>
+                    <Badge variant="secondary" className="text-xs capitalize">{current.recipe.foodType}</Badge>
                   </div>
                   <p className="text-sm text-muted-foreground">{current.recipe.description}</p>
 
                   <div className="flex flex-wrap gap-1.5">
                     {current.recipe.mealTypes.map(m => <Badge key={m} variant="outline" className="text-xs capitalize">{m}</Badge>)}
                     <Badge variant="secondary" className="text-xs">{current.recipe.cuisine}</Badge>
+                    <Badge variant="outline" className="text-xs capitalize">{current.recipe.healthTag}</Badge>
                   </div>
 
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Clock className="h-4 w-4" /> {current.recipe.prepTimeMinutes} min · {current.recipe.difficulty}
+                    <Clock className="h-4 w-4" /> {current.recipe.prepTimeMinutes} min · <span className="capitalize">{current.recipe.effort}</span>
                   </div>
 
                   {/* Reasons */}

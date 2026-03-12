@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/context/AppContext';
-import { Recipe, MealType, CUISINES, FOOD_TYPES, MEAL_TYPES } from '@/types/models';
+import { Recipe, MealType, RecipeFoodType, HealthTag, Effort, MoodTag, CUISINES, RECIPE_FOOD_TYPES, MEAL_TYPES, HEALTH_TAGS, EFFORT_LEVELS, MOOD_TAGS } from '@/types/models';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -17,6 +17,9 @@ export default function RecipeLibraryPage() {
   const [mealFilter, setMealFilter] = useState<string>('all');
   const [cuisineFilter, setCuisineFilter] = useState<string>('all');
   const [foodTypeFilter, setFoodTypeFilter] = useState<string>('all');
+  const [healthFilter, setHealthFilter] = useState<string>('all');
+  const [effortFilter, setEffortFilter] = useState<string>('all');
+  const [moodFilter, setMoodFilter] = useState<string>('all');
   const [favOnly, setFavOnly] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
@@ -24,14 +27,17 @@ export default function RecipeLibraryPage() {
 
   const filtered = useMemo(() => {
     return recipes.filter(r => {
-      if (search && !r.title.toLowerCase().includes(search.toLowerCase()) && !r.tags.some(t => t.toLowerCase().includes(search.toLowerCase()))) return false;
+      if (search && !r.title.toLowerCase().includes(search.toLowerCase()) && !r.tags.some(t => t.toLowerCase().includes(search.toLowerCase())) && !(r.subCuisine || '').toLowerCase().includes(search.toLowerCase())) return false;
       if (mealFilter !== 'all' && !r.mealTypes.includes(mealFilter as MealType)) return false;
       if (cuisineFilter !== 'all' && r.cuisine !== cuisineFilter) return false;
       if (foodTypeFilter !== 'all' && r.foodType !== foodTypeFilter) return false;
+      if (healthFilter !== 'all' && r.healthTag !== healthFilter) return false;
+      if (effortFilter !== 'all' && r.effort !== effortFilter) return false;
+      if (moodFilter !== 'all' && r.moodTag !== moodFilter) return false;
       if (favOnly && !r.favorite) return false;
       return true;
     });
-  }, [recipes, search, mealFilter, cuisineFilter, foodTypeFilter, favOnly]);
+  }, [recipes, search, mealFilter, cuisineFilter, foodTypeFilter, healthFilter, effortFilter, moodFilter, favOnly]);
 
   return (
     <AppLayout>
@@ -50,24 +56,45 @@ export default function RecipeLibraryPage() {
             <Input placeholder="Search recipes..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
           </div>
           <Select value={mealFilter} onValueChange={setMealFilter}>
-            <SelectTrigger className="w-[130px]"><SelectValue placeholder="Meal type" /></SelectTrigger>
+            <SelectTrigger className="w-[120px]"><SelectValue placeholder="Meal" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All meals</SelectItem>
               {MEAL_TYPES.map(m => <SelectItem key={m} value={m} className="capitalize">{m}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={cuisineFilter} onValueChange={setCuisineFilter}>
-            <SelectTrigger className="w-[130px]"><SelectValue placeholder="Cuisine" /></SelectTrigger>
+            <SelectTrigger className="w-[120px]"><SelectValue placeholder="Cuisine" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All cuisines</SelectItem>
               {CUISINES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={foodTypeFilter} onValueChange={setFoodTypeFilter}>
-            <SelectTrigger className="w-[130px]"><SelectValue placeholder="Food type" /></SelectTrigger>
+            <SelectTrigger className="w-[120px]"><SelectValue placeholder="Food type" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All types</SelectItem>
-              {FOOD_TYPES.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
+              {RECIPE_FOOD_TYPES.map(f => <SelectItem key={f} value={f} className="capitalize">{f}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={healthFilter} onValueChange={setHealthFilter}>
+            <SelectTrigger className="w-[120px]"><SelectValue placeholder="Health" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              {HEALTH_TAGS.map(h => <SelectItem key={h} value={h} className="capitalize">{h}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={effortFilter} onValueChange={setEffortFilter}>
+            <SelectTrigger className="w-[110px]"><SelectValue placeholder="Effort" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              {EFFORT_LEVELS.map(e => <SelectItem key={e} value={e} className="capitalize">{e}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={moodFilter} onValueChange={setMoodFilter}>
+            <SelectTrigger className="w-[120px]"><SelectValue placeholder="Mood" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All moods</SelectItem>
+              {MOOD_TAGS.map(m => <SelectItem key={m} value={m} className="capitalize">{m}</SelectItem>)}
             </SelectContent>
           </Select>
           <Button variant={favOnly ? 'default' : 'outline'} size="icon" onClick={() => setFavOnly(!favOnly)}>
@@ -77,6 +104,8 @@ export default function RecipeLibraryPage() {
             {viewMode === 'grid' ? <List className="h-4 w-4" /> : <Grid3X3 className="h-4 w-4" />}
           </Button>
         </div>
+
+        <div className="text-xs text-muted-foreground">{filtered.length} recipe{filtered.length !== 1 ? 's' : ''}</div>
 
         {/* Results */}
         {filtered.length === 0 ? (
@@ -97,11 +126,12 @@ export default function RecipeLibraryPage() {
                 <div className="flex flex-wrap gap-1 mb-3">
                   {recipe.mealTypes.map(m => <Badge key={m} variant="outline" className="text-xs capitalize">{m}</Badge>)}
                   <Badge variant="secondary" className="text-xs">{recipe.cuisine}</Badge>
-                  <Badge variant="secondary" className="text-xs">{recipe.foodType}</Badge>
+                  <Badge variant="secondary" className="text-xs capitalize">{recipe.foodType}</Badge>
+                  <Badge variant="outline" className="text-xs capitalize">{recipe.healthTag}</Badge>
                 </div>
                 <div className="mt-auto flex items-center justify-between">
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Clock className="h-3 w-3" /> {recipe.prepTimeMinutes}m · {recipe.difficulty}
+                    <Clock className="h-3 w-3" /> {recipe.prepTimeMinutes}m · <span className="capitalize">{recipe.effort}</span>
                   </div>
                   <div className="flex gap-1">
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingRecipe(recipe); setShowForm(true); }}>
@@ -121,7 +151,7 @@ export default function RecipeLibraryPage() {
               <Card key={recipe.id} className="card-warm-hover p-3 flex items-center gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-sm">{recipe.title}</div>
-                  <div className="text-xs text-muted-foreground">{recipe.cuisine} · {recipe.foodType} · {recipe.prepTimeMinutes}m</div>
+                  <div className="text-xs text-muted-foreground">{recipe.cuisine} · <span className="capitalize">{recipe.foodType}</span> · {recipe.prepTimeMinutes}m · <span className="capitalize">{recipe.effort}</span></div>
                 </div>
                 <div className="flex gap-1">
                   <button onClick={() => toggleFavorite(recipe.id)}>

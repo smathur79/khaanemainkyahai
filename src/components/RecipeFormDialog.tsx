@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAppContext } from '@/context/AppContext';
-import { Recipe, MealType, FoodType, Difficulty, MEAL_TYPES, CUISINES, FOOD_TYPES } from '@/types/models';
+import { Recipe, MealType, RecipeFoodType, HealthTag, Effort, MoodTag, Difficulty, MEAL_TYPES, CUISINES, RECIPE_FOOD_TYPES, HEALTH_TAGS, EFFORT_LEVELS, MOOD_TAGS } from '@/types/models';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,14 +24,17 @@ export default function RecipeFormDialog({ open, onOpenChange, recipe }: Props) 
   const [description, setDescription] = useState('');
   const [mealTypes, setMealTypes] = useState<MealType[]>(['lunch']);
   const [cuisine, setCuisine] = useState('Indian');
-  const [foodType, setFoodType] = useState<FoodType>('Vegetarian');
+  const [subCuisine, setSubCuisine] = useState('');
+  const [foodType, setFoodType] = useState<RecipeFoodType>('vegetarian');
+  const [healthTag, setHealthTag] = useState<HealthTag>('balanced');
+  const [effort, setEffort] = useState<Effort>('medium');
+  const [moodTag, setMoodTag] = useState<MoodTag>('comfort');
   const [prepTime, setPrepTime] = useState('30');
   const [difficulty, setDifficulty] = useState<Difficulty>('Easy');
   const [ingredients, setIngredients] = useState('');
   const [instructions, setInstructions] = useState('');
   const [tags, setTags] = useState('');
   const [favorite, setFavorite] = useState(false);
-  const [notes, setNotes] = useState('');
 
   useEffect(() => {
     if (recipe) {
@@ -39,7 +42,11 @@ export default function RecipeFormDialog({ open, onOpenChange, recipe }: Props) 
       setDescription(recipe.description);
       setMealTypes(recipe.mealTypes);
       setCuisine(recipe.cuisine);
+      setSubCuisine(recipe.subCuisine || '');
       setFoodType(recipe.foodType);
+      setHealthTag(recipe.healthTag || 'balanced');
+      setEffort(recipe.effort || 'medium');
+      setMoodTag(recipe.moodTag || 'comfort');
       setPrepTime(String(recipe.prepTimeMinutes));
       setDifficulty(recipe.difficulty);
       setIngredients(recipe.ingredients.join(', '));
@@ -48,8 +55,10 @@ export default function RecipeFormDialog({ open, onOpenChange, recipe }: Props) 
       setFavorite(recipe.favorite);
     } else {
       setTitle(''); setDescription(''); setMealTypes(['lunch']); setCuisine('Indian');
-      setFoodType('Vegetarian'); setPrepTime('30'); setDifficulty('Easy');
-      setIngredients(''); setInstructions(''); setTags(''); setFavorite(false); setNotes('');
+      setSubCuisine(''); setFoodType('vegetarian'); setHealthTag('balanced');
+      setEffort('medium'); setMoodTag('comfort');
+      setPrepTime('30'); setDifficulty('Easy');
+      setIngredients(''); setInstructions(''); setTags(''); setFavorite(false);
     }
   }, [recipe, open]);
 
@@ -64,7 +73,11 @@ export default function RecipeFormDialog({ open, onOpenChange, recipe }: Props) 
       description,
       mealTypes,
       cuisine,
+      subCuisine,
       foodType,
+      healthTag,
+      effort,
+      moodTag,
       prepTimeMinutes: parseInt(prepTime) || 30,
       difficulty,
       ingredients: ingredients.split(',').map(s => s.trim()).filter(Boolean),
@@ -72,6 +85,9 @@ export default function RecipeFormDialog({ open, onOpenChange, recipe }: Props) 
       tags: tags.split(',').map(s => s.trim()).filter(Boolean),
       favorite,
       source: 'manual' as const,
+      sourceName: 'User',
+      sourceLink: '',
+      isLinkOnly: false,
     };
     if (isEdit) {
       updateRecipe(recipe.id, data);
@@ -98,7 +114,7 @@ export default function RecipeFormDialog({ open, onOpenChange, recipe }: Props) 
           </div>
           <div>
             <Label className="mb-1 block">Meal Type</Label>
-            <div className="flex gap-1.5">
+            <div className="flex flex-wrap gap-1.5">
               {MEAL_TYPES.map(mt => (
                 <Badge key={mt} variant={mealTypes.includes(mt) ? 'default' : 'outline'} className="cursor-pointer capitalize" onClick={() => toggleMealType(mt)}>
                   {mt}
@@ -115,10 +131,35 @@ export default function RecipeFormDialog({ open, onOpenChange, recipe }: Props) 
               </Select>
             </div>
             <div>
+              <Label>Sub-Cuisine</Label>
+              <Input value={subCuisine} onChange={e => setSubCuisine(e.target.value)} placeholder="e.g. Punjabi" />
+            </div>
+            <div>
               <Label>Food Type</Label>
-              <Select value={foodType} onValueChange={v => setFoodType(v as FoodType)}>
+              <Select value={foodType} onValueChange={v => setFoodType(v as RecipeFoodType)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{FOOD_TYPES.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}</SelectContent>
+                <SelectContent>{RECIPE_FOOD_TYPES.map(f => <SelectItem key={f} value={f} className="capitalize">{f}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Health Tag</Label>
+              <Select value={healthTag} onValueChange={v => setHealthTag(v as HealthTag)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{HEALTH_TAGS.map(h => <SelectItem key={h} value={h} className="capitalize">{h}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Effort</Label>
+              <Select value={effort} onValueChange={v => setEffort(v as Effort)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{EFFORT_LEVELS.map(e => <SelectItem key={e} value={e} className="capitalize">{e}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Mood</Label>
+              <Select value={moodTag} onValueChange={v => setMoodTag(v as MoodTag)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{MOOD_TAGS.map(m => <SelectItem key={m} value={m} className="capitalize">{m}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div>

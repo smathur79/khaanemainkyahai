@@ -197,12 +197,24 @@ export default function WeeklyPlannerPage() {
                           {/* Current recipes with remove buttons */}
                           {hasRecipes && (
                             <>
-                              {slotRecipes.map(r => (
+                              {slotRecipes.map((r, idx) => (
                                 <div key={r.id} className="flex items-center justify-between text-xs px-2 py-1 bg-secondary rounded">
                                   <span className="truncate font-medium">{r.title}</span>
-                                  <button onClick={() => handleRemoveRecipe(day, meal, r.id)} className="ml-1 text-muted-foreground hover:text-destructive shrink-0">
-                                    <X className="h-3 w-3" />
-                                  </button>
+                                  <div className="flex items-center gap-0.5 shrink-0 ml-1">
+                                    {idx > 0 && (
+                                      <button onClick={() => { const p = getWeeklyPlan(weekKey); if (p) reorderRecipeInSlot(p.id, day, meal, idx, idx - 1); }} className="text-muted-foreground hover:text-foreground">
+                                        <ChevronUp className="h-3 w-3" />
+                                      </button>
+                                    )}
+                                    {idx < slotRecipes.length - 1 && (
+                                      <button onClick={() => { const p = getWeeklyPlan(weekKey); if (p) reorderRecipeInSlot(p.id, day, meal, idx, idx + 1); }} className="text-muted-foreground hover:text-foreground">
+                                        <ChevronDown className="h-3 w-3" />
+                                      </button>
+                                    )}
+                                    <button onClick={() => handleRemoveRecipe(day, meal, r.id)} className="text-muted-foreground hover:text-destructive">
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </div>
                                 </div>
                               ))}
                               <Button variant="ghost" size="sm" className="w-full justify-start text-xs" onClick={() => handleClearSlot(day, meal)}>

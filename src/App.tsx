@@ -13,6 +13,9 @@ import ShortlistPage from "./pages/ShortlistPage.tsx";
 import CookNowPage from "./pages/CookNowPage.tsx";
 import PrepPage from "./pages/PrepPage.tsx";
 import HouseholdPage from "./pages/HouseholdPage.tsx";
+import MealRequestsPage from "./pages/MealRequestsPage.tsx";
+import WeeklyTemplatesPage from "./pages/WeeklyTemplatesPage.tsx";
+import RitualsPage from "./pages/RitualsPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -34,6 +37,9 @@ const App = () => (
               <Route path="/cook-now" element={<CookNowPage />} />
               <Route path="/prep" element={<PrepPage />} />
               <Route path="/household" element={<HouseholdPage />} />
+              <Route path="/requests" element={<MealRequestsPage />} />
+              <Route path="/templates" element={<WeeklyTemplatesPage />} />
+              <Route path="/rituals" element={<RitualsPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

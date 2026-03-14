@@ -18,6 +18,8 @@ import { toast } from 'sonner';
 
 export default function WeeklyPlannerPage() {
   const { recipes, familyMembers, weeklyPlans, mealSlots, createWeeklyPlan, getWeeklyPlan, getMealSlots, setMealSlot, addRecipeToSlot, removeRecipeFromSlot, reorderRecipeInSlot, finalizePlan, swipeDecisions, household, clearWeek, copyLastWeek } = useAppContext();
+  const { role } = useAuth();
+  const isPlanner = role === 'planner';
 
   const [currentMonday, setCurrentMonday] = useState(() => getMonday(new Date()));
   const weekKey = formatDateKey(currentMonday);

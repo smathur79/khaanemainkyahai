@@ -11,11 +11,8 @@ const plannerNav = [
 ];
 
 const requestorNav = [
-  { to: '/', label: 'Home', icon: Home },
   { to: '/planner', label: 'Calendar', icon: Calendar },
   { to: '/requests', label: 'Request', icon: MessageSquare },
-  { to: '/recipes', label: 'Recipes', icon: BookOpen },
-  { to: '/rituals', label: 'Rituals', icon: Sun },
 ];
 
 export default function BottomNav() {

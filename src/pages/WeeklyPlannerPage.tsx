@@ -8,14 +8,14 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ChevronLeft, ChevronRight, Check, X, Copy, Wand2, Download, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Check, X, Copy, Wand2, Download, Plus, Trash2, CopyCheck } from 'lucide-react';
 import { generateWeeklyPlanPdf } from '@/lib/generatePlanPdf';
 import AppLayout from '@/components/AppLayout';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
 export default function WeeklyPlannerPage() {
-  const { recipes, familyMembers, weeklyPlans, mealSlots, createWeeklyPlan, getWeeklyPlan, getMealSlots, setMealSlot, addRecipeToSlot, removeRecipeFromSlot, reorderRecipeInSlot, finalizePlan, swipeDecisions, household } = useAppContext();
+  const { recipes, familyMembers, weeklyPlans, mealSlots, createWeeklyPlan, getWeeklyPlan, getMealSlots, setMealSlot, addRecipeToSlot, removeRecipeFromSlot, reorderRecipeInSlot, finalizePlan, swipeDecisions, household, clearWeek, copyLastWeek } = useAppContext();
 
   const [currentMonday, setCurrentMonday] = useState(() => getMonday(new Date()));
   const weekKey = formatDateKey(currentMonday);
@@ -87,6 +87,22 @@ export default function WeeklyPlannerPage() {
     if (p) { finalizePlan(p.id); toast.success('Weekly plan finalized!'); }
   };
 
+  const handleClearWeek = async () => {
+    const p = getWeeklyPlan(weekKey);
+    if (p) {
+      await clearWeek(p.id);
+      toast.success('Week cleared!');
+    }
+  };
+
+  const handleCopyLastWeek = async () => {
+    const prevMonday = addWeeks(currentMonday, -1);
+    const prevWeekKey = formatDateKey(prevMonday);
+    await ensurePlan();
+    await copyLastWeek(weekKey, prevWeekKey);
+    toast.success('Copied last week\'s plan!');
+  };
+
   const handleDuplicate = (fromDay: DayOfWeek, meal: MealType) => {
     const slotRecipes = getSlotRecipes(fromDay, meal);
     if (slotRecipes.length === 0) return;
@@ -128,12 +144,20 @@ export default function WeeklyPlannerPage() {
         {/* Actions */}
         <div className="flex flex-wrap gap-2">
           <Button onClick={handleAutoFill} variant="outline" size="sm">
-            <Wand2 className="mr-1 h-4 w-4" /> Auto-fill Week
+            <Wand2 className="mr-1 h-4 w-4" /> Auto-fill
+          </Button>
+          <Button onClick={handleCopyLastWeek} variant="outline" size="sm">
+            <CopyCheck className="mr-1 h-4 w-4" /> Copy Last Week
           </Button>
           {plan && (
-            <Button onClick={handleFinalize} size="sm" disabled={plan.status === 'finalized'}>
-              <Check className="mr-1 h-4 w-4" /> {plan.status === 'finalized' ? 'Finalized' : 'Finalize Plan'}
-            </Button>
+            <>
+              <Button onClick={handleClearWeek} variant="outline" size="sm">
+                <Trash2 className="mr-1 h-4 w-4" /> Clear Week
+              </Button>
+              <Button onClick={handleFinalize} size="sm" disabled={plan.status === 'finalized'}>
+                <Check className="mr-1 h-4 w-4" /> {plan.status === 'finalized' ? 'Finalized' : 'Finalize'}
+              </Button>
+            </>
           )}
           {plan?.status === 'finalized' && (
             <Button
@@ -146,7 +170,7 @@ export default function WeeklyPlannerPage() {
                 recipes,
               })}
             >
-              <Download className="mr-1 h-4 w-4" /> Download PDF
+              <Download className="mr-1 h-4 w-4" /> PDF
             </Button>
           )}
           <Badge variant="outline" className="text-xs self-center">
@@ -228,7 +252,7 @@ export default function WeeklyPlannerPage() {
                           <div className="text-[10px] text-muted-foreground uppercase tracking-wide px-2 pt-1">
                             <Plus className="h-3 w-3 inline mr-1" />Add recipe
                           </div>
-                          {mealRecipes(meal).filter(r => !slotRecipeIds.has(r.id)).map(r => (
+                          {mealRecipes(meal).filter(r => !slotRecipeIds.has(r.id)).slice(0, 20).map(r => (
                             <Button
                               key={r.id}
                               variant="ghost"

@@ -144,10 +144,6 @@ export default function WeeklyPlannerPage() {
             <ChevronRight className="h-5 w-5" />
           </Button>
         </div>
-          <Button variant="ghost" size="icon" onClick={() => setCurrentMonday(addWeeks(currentMonday, 1))}>
-            <ChevronRight className="h-5 w-5" />
-          </Button>
-        </div>
 
         {/* Actions */}
         <div className="flex flex-wrap gap-2">

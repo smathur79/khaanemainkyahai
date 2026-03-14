@@ -18,12 +18,8 @@ const plannerNav = [
 ];
 
 const requestorNav = [
-  { to: '/', label: 'Dashboard', icon: Home },
   { to: '/planner', label: 'Calendar', icon: Calendar },
   { to: '/requests', label: 'Request', icon: MessageSquare },
-  { to: '/recipes', label: 'Recipes', icon: BookOpen },
-  { to: '/rituals', label: 'Rituals', icon: Sun },
-  { to: '/household', label: 'Settings', icon: Settings },
 ];
 
 export default function TopNav() {

@@ -1,12 +1,12 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, BookOpen, Calendar, Sparkles, ChefHat } from 'lucide-react';
+import { Home, BookOpen, Calendar, Flame, ClipboardList } from 'lucide-react';
 
 const navItems = [
   { to: '/', label: 'Home', icon: Home },
-  { to: '/recipes', label: 'Recipes', icon: BookOpen },
   { to: '/planner', label: 'Planner', icon: Calendar },
-  { to: '/generate', label: 'AI Chef', icon: Sparkles },
-  { to: '/shortlist', label: 'Discover', icon: ChefHat },
+  { to: '/cook-now', label: 'Cook Now', icon: Flame },
+  { to: '/prep', label: 'Prep', icon: ClipboardList },
+  { to: '/recipes', label: 'Recipes', icon: BookOpen },
 ];
 
 export default function BottomNav() {

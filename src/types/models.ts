@@ -3,21 +3,21 @@ export type FoodType = 'Vegetarian' | 'Eggetarian' | 'Non-Vegetarian' | 'Vegan' 
 export type SpiceLevel = 'Low' | 'Medium' | 'High';
 export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'smoothie' | 'dessert';
 export type Difficulty = 'Easy' | 'Medium' | 'Hard';
-export type RecipeSource = 'manual' | 'ai';
+export type RecipeSource = 'manual' | 'ai' | 'seed';
 export type PlanStatus = 'draft' | 'finalized';
 export type SwipeDecisionType = 'liked' | 'skipped';
 export type DayOfWeek = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
+export type EntryType = 'cooked' | 'order_in' | 'leftovers' | 'eat_out';
+export type HouseholdRole = 'planner' | 'requestor_viewer';
 
-// New recipe-specific classification types
+// Recipe-specific classification types
 export type RecipeFoodType = 'vegan' | 'vegetarian' | 'egg' | 'chicken' | 'fish';
 export type HealthTag = 'healthy' | 'balanced' | 'indulgent';
 export type Effort = 'quick' | 'medium' | 'weekend';
 export type MoodTag = 'comfort' | 'light' | 'kid-friendly' | 'adventurous' | 'hearty' | 'refreshing';
 
 export const DAYS_OF_WEEK: DayOfWeek[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-/** Meal types used in the weekly planner grid (core 3) */
 export const PLANNER_MEAL_TYPES: MealType[] = ['breakfast', 'lunch', 'dinner'];
-/** All meal types for filtering and categorization */
 export const MEAL_TYPES: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack', 'smoothie', 'dessert'];
 export const CUISINES = [
   'Indian', 'Italian', 'Chinese', 'Mexican', 'Continental', 'Mediterranean',
@@ -28,10 +28,12 @@ export const RECIPE_FOOD_TYPES: RecipeFoodType[] = ['vegan', 'vegetarian', 'egg'
 export const HEALTH_TAGS: HealthTag[] = ['healthy', 'balanced', 'indulgent'];
 export const EFFORT_LEVELS: Effort[] = ['quick', 'medium', 'weekend'];
 export const MOOD_TAGS: MoodTag[] = ['comfort', 'light', 'kid-friendly', 'adventurous', 'hearty', 'refreshing'];
+export const ENTRY_TYPES: EntryType[] = ['cooked', 'order_in', 'leftovers', 'eat_out'];
 
 export interface Household {
   id: string;
   name: string;
+  accessCode: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -72,6 +74,8 @@ export interface Recipe {
   sourceName: string;
   sourceLink: string;
   isLinkOnly: boolean;
+  kidFriendly: boolean;
+  highProtein: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -81,8 +85,18 @@ export interface WeeklyPlan {
   householdId: string;
   weekStartDate: string;
   status: PlanStatus;
+  isHistorical: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface MealSlotItem {
+  id: string;
+  recipeId: string | null;
+  title: string;
+  sortOrder: number;
+  notes: string;
+  portionNote: string;
 }
 
 export interface WeeklyMealSlot {
@@ -90,7 +104,9 @@ export interface WeeklyMealSlot {
   weeklyPlanId: string;
   dayOfWeek: DayOfWeek;
   mealType: MealType;
-  recipeIds: string[];
+  entryType: EntryType;
+  recipeIds: string[]; // computed from items for backward compat
+  items: MealSlotItem[];
   notes: string;
 }
 

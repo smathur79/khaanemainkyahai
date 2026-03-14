@@ -1,11 +1,86 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { Household, FamilyMember, Recipe, WeeklyPlan, WeeklyMealSlot, SwipeDecision, DayOfWeek, MealType, DAYS_OF_WEEK, PLANNER_MEAL_TYPES } from '@/types/models';
-import { seedRecipes } from '@/data/seedRecipes';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from './AuthContext';
+import {
+  Household, FamilyMember, Recipe, WeeklyPlan, WeeklyMealSlot, MealSlotItem,
+  SwipeDecision, DayOfWeek, MealType, EntryType,
+  DAYS_OF_WEEK, PLANNER_MEAL_TYPES,
+} from '@/types/models';
+import { allSeedRecipes } from '@/data/recipes/index';
 
-function genId() {
-  return crypto.randomUUID();
+// ── helpers ──────────────────────────────────────────────
+function toRecipe(r: any): Recipe {
+  return {
+    id: r.id,
+    householdId: r.household_id,
+    title: r.title,
+    description: r.description,
+    mealTypes: r.meal_types ?? [],
+    cuisine: r.cuisine,
+    subCuisine: r.sub_cuisine ?? '',
+    foodType: r.food_type,
+    healthTag: r.health_tag,
+    effort: r.effort,
+    moodTag: r.mood_tag,
+    prepTimeMinutes: r.prep_time_minutes,
+    difficulty: r.difficulty,
+    ingredients: r.ingredients ?? [],
+    instructions: r.instructions,
+    tags: r.tags ?? [],
+    favorite: r.favorite,
+    source: r.source as any,
+    sourceName: r.source_name,
+    sourceLink: r.source_link,
+    isLinkOnly: r.is_link_only,
+    kidFriendly: r.kid_friendly ?? false,
+    highProtein: r.high_protein ?? false,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  };
 }
 
+function toFamilyMember(m: any): FamilyMember {
+  return {
+    id: m.id,
+    householdId: m.household_id,
+    name: m.name,
+    label: m.label,
+    foodType: m.food_type,
+    likes: m.likes ?? [],
+    dislikes: m.dislikes ?? [],
+    exclusions: m.exclusions ?? [],
+    spiceLevel: m.spice_level,
+    preferredCuisines: m.preferred_cuisines ?? [],
+    notes: m.notes,
+  };
+}
+
+function toSlot(s: any, items: any[]): WeeklyMealSlot {
+  const slotItems: MealSlotItem[] = items
+    .filter((i: any) => i.weekly_meal_slot_id === s.id)
+    .sort((a: any, b: any) => a.sort_order - b.sort_order)
+    .map((i: any) => ({
+      id: i.id,
+      recipeId: i.recipe_id,
+      title: i.title,
+      sortOrder: i.sort_order,
+      notes: i.notes,
+      portionNote: i.portion_note ?? '',
+    }));
+
+  return {
+    id: s.id,
+    weeklyPlanId: s.weekly_plan_id,
+    dayOfWeek: s.day_of_week,
+    mealType: s.meal_type,
+    entryType: s.entry_type ?? 'cooked',
+    recipeIds: slotItems.filter(i => i.recipeId).map(i => i.recipeId!),
+    items: slotItems,
+    notes: s.notes,
+  };
+}
+
+// ── context shape ────────────────────────────────────────
 interface AppState {
   household: Household | null;
   familyMembers: FamilyMember[];
@@ -13,163 +88,298 @@ interface AppState {
   weeklyPlans: WeeklyPlan[];
   mealSlots: WeeklyMealSlot[];
   swipeDecisions: SwipeDecision[];
+  dataLoading: boolean;
 }
 
 interface AppContextType extends AppState {
-  setupHousehold: (name: string) => string;
-  addFamilyMember: (member: Omit<FamilyMember, 'id' | 'householdId'>) => void;
-  updateFamilyMember: (id: string, updates: Partial<FamilyMember>) => void;
-  removeFamilyMember: (id: string) => void;
-  addRecipe: (recipe: Omit<Recipe, 'id' | 'householdId' | 'createdAt' | 'updatedAt'>) => string;
-  updateRecipe: (id: string, updates: Partial<Recipe>) => void;
-  deleteRecipe: (id: string) => void;
-  toggleFavorite: (id: string) => void;
-  createWeeklyPlan: (weekStartDate: string) => string;
+  setupHousehold: (name: string) => Promise<string>;
+  addFamilyMember: (member: Omit<FamilyMember, 'id' | 'householdId'>) => Promise<void>;
+  updateFamilyMember: (id: string, updates: Partial<FamilyMember>) => Promise<void>;
+  removeFamilyMember: (id: string) => Promise<void>;
+  addRecipe: (recipe: Omit<Recipe, 'id' | 'householdId' | 'createdAt' | 'updatedAt'>) => Promise<string>;
+  updateRecipe: (id: string, updates: Partial<Recipe>) => Promise<void>;
+  deleteRecipe: (id: string) => Promise<void>;
+  toggleFavorite: (id: string) => Promise<void>;
+  createWeeklyPlan: (weekStartDate: string) => Promise<string>;
   getWeeklyPlan: (weekStartDate: string) => WeeklyPlan | undefined;
   getMealSlots: (planId: string) => WeeklyMealSlot[];
-  setMealSlot: (planId: string, day: DayOfWeek, meal: MealType, recipeIds: string[], notes?: string) => void;
-  addRecipeToSlot: (planId: string, day: DayOfWeek, meal: MealType, recipeId: string) => void;
-  removeRecipeFromSlot: (planId: string, day: DayOfWeek, meal: MealType, recipeId: string) => void;
+  setMealSlot: (planId: string, day: DayOfWeek, meal: MealType, recipeIds: string[], notes?: string) => Promise<void>;
+  addRecipeToSlot: (planId: string, day: DayOfWeek, meal: MealType, recipeId: string) => Promise<void>;
+  removeRecipeFromSlot: (planId: string, day: DayOfWeek, meal: MealType, recipeId: string) => Promise<void>;
   reorderRecipeInSlot: (planId: string, day: DayOfWeek, meal: MealType, fromIndex: number, toIndex: number) => void;
-  finalizePlan: (planId: string) => void;
+  finalizePlan: (planId: string) => Promise<void>;
   addSwipeDecision: (decision: Omit<SwipeDecision, 'id' | 'householdId' | 'createdAt'>) => void;
   getSwipeDecisions: (weekStartDate: string) => SwipeDecision[];
   clearSwipeDecisions: (weekStartDate: string) => void;
+  clearWeek: (planId: string) => Promise<void>;
+  copyLastWeek: (currentWeekStart: string, previousWeekStart: string) => Promise<void>;
+  refreshData: () => Promise<void>;
   isOnboarded: boolean;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'family-meal-planner-state';
-
-// Map old foodType values to new RecipeFoodType
-function migrateFoodType(old: string): string {
-  switch (old) {
-    case 'Vegetarian': return 'vegetarian';
-    case 'Vegan': return 'vegan';
-    case 'Eggetarian': return 'egg';
-    case 'Non-Vegetarian': return 'chicken';
-    case 'Other': return 'vegetarian';
-    default: return old;
-  }
-}
-
-function loadState(): AppState {
-  const empty: AppState = { household: null, familyMembers: [], recipes: [], weeklyPlans: [], mealSlots: [], swipeDecisions: [] };
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved) as AppState;
-      // Migrate old recipeId format to recipeIds array
-      if (parsed.mealSlots) {
-        parsed.mealSlots = parsed.mealSlots.map((s: any) => ({
-          ...s,
-          recipeIds: s.recipeIds ?? (s.recipeId ? [s.recipeId] : []),
-        }));
-      }
-      // Migrate old recipe foodType and add new fields with defaults
-      if (parsed.recipes) {
-        parsed.recipes = parsed.recipes.map((r: any) => ({
-          ...r,
-          foodType: migrateFoodType(r.foodType),
-          subCuisine: r.subCuisine ?? '',
-          healthTag: r.healthTag ?? 'balanced',
-          effort: r.effort ?? (r.prepTimeMinutes <= 15 ? 'quick' : r.prepTimeMinutes <= 30 ? 'medium' : 'weekend'),
-          moodTag: r.moodTag ?? 'comfort',
-          sourceName: r.sourceName ?? 'Seed Library',
-          sourceLink: r.sourceLink ?? '',
-          isLinkOnly: r.isLinkOnly ?? false,
-        }));
-      }
-      return { ...empty, ...parsed };
-    }
-  } catch {
-    localStorage.removeItem(STORAGE_KEY);
-  }
-  return empty;
-}
-
-function saveState(state: AppState) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-}
+const initialState: AppState = {
+  household: null,
+  familyMembers: [],
+  recipes: [],
+  weeklyPlans: [],
+  mealSlots: [],
+  swipeDecisions: [],
+  dataLoading: true,
+};
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<AppState>(loadState);
+  const { householdId, householdName, accessCode, createHousehold: authCreateHousehold } = useAuth();
+  const [state, setState] = useState<AppState>(initialState);
 
-  useEffect(() => { saveState(state); }, [state]);
+  // ── load all data when householdId changes ─────────────
+  const loadData = useCallback(async (hid: string) => {
+    setState(prev => ({ ...prev, dataLoading: true }));
 
-  const setupHousehold = useCallback((name: string) => {
-    const hid = genId();
-    const household: Household = { id: hid, name, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
-    const recipes: Recipe[] = seedRecipes.map(r => ({ ...r, id: genId(), householdId: hid }));
-    setState(prev => ({ ...prev, household, recipes }));
+    const [
+      { data: householdData },
+      { data: membersData },
+      { data: recipesData },
+      { data: plansData },
+    ] = await Promise.all([
+      supabase.from('households').select('*').eq('id', hid).single(),
+      supabase.from('family_members').select('*').eq('household_id', hid),
+      supabase.from('recipes').select('*').eq('household_id', hid),
+      supabase.from('weekly_plans').select('*').eq('household_id', hid),
+    ]);
+
+    const planIds = (plansData ?? []).map((p: any) => p.id);
+    let allSlots: any[] = [];
+    let allItems: any[] = [];
+
+    if (planIds.length > 0) {
+      const { data: slotsData } = await supabase
+        .from('weekly_meal_slots')
+        .select('*')
+        .in('weekly_plan_id', planIds);
+      allSlots = slotsData ?? [];
+
+      const slotIds = allSlots.map((s: any) => s.id);
+      if (slotIds.length > 0) {
+        const { data: itemsData } = await supabase
+          .from('weekly_meal_slot_items')
+          .select('*')
+          .in('weekly_meal_slot_id', slotIds);
+        allItems = itemsData ?? [];
+      }
+    }
+
+    const household: Household | null = householdData
+      ? { id: householdData.id, name: householdData.name, accessCode: householdData.access_code, createdAt: householdData.created_at, updatedAt: householdData.updated_at }
+      : null;
+
+    setState({
+      household,
+      familyMembers: (membersData ?? []).map(toFamilyMember),
+      recipes: (recipesData ?? []).map(toRecipe),
+      weeklyPlans: (plansData ?? []).map((p: any) => ({
+        id: p.id, householdId: p.household_id, weekStartDate: p.week_start_date,
+        status: p.status, isHistorical: p.is_historical, createdAt: p.created_at, updatedAt: p.updated_at,
+      })),
+      mealSlots: allSlots.map((s: any) => toSlot(s, allItems)),
+      swipeDecisions: [],
+      dataLoading: false,
+    });
+  }, []);
+
+  useEffect(() => {
+    if (householdId) {
+      loadData(householdId);
+    } else {
+      setState(prev => ({ ...prev, household: null, familyMembers: [], recipes: [], weeklyPlans: [], mealSlots: [], dataLoading: false }));
+    }
+  }, [householdId, loadData]);
+
+  const refreshData = useCallback(async () => {
+    if (householdId) await loadData(householdId);
+  }, [householdId, loadData]);
+
+  // ── household setup (seeds recipes) ────────────────────
+  const setupHousehold = useCallback(async (name: string) => {
+    const hid = await authCreateHousehold(name);
+
+    // Seed recipes
+    const seedRows = allSeedRecipes.map(r => ({
+      household_id: hid,
+      title: r.title,
+      description: r.description,
+      meal_types: r.mealTypes,
+      cuisine: r.cuisine,
+      sub_cuisine: r.subCuisine ?? '',
+      food_type: r.foodType as any,
+      health_tag: r.healthTag as any,
+      effort: r.effort as any,
+      mood_tag: r.moodTag,
+      prep_time_minutes: r.prepTimeMinutes,
+      difficulty: r.difficulty as any,
+      ingredients: r.ingredients,
+      instructions: r.instructions,
+      tags: r.tags,
+      favorite: r.favorite,
+      source: r.source ?? 'seed',
+      source_name: r.sourceName,
+      source_link: r.sourceLink ?? '',
+      is_link_only: r.isLinkOnly,
+      kid_friendly: (r as any).kidFriendly ?? false,
+      high_protein: (r as any).highProtein ?? false,
+    }));
+
+    // Batch insert in chunks of 50
+    for (let i = 0; i < seedRows.length; i += 50) {
+      await supabase.from('recipes').insert(seedRows.slice(i, i + 50));
+    }
+
+    await loadData(hid);
     return hid;
-  }, []);
+  }, [authCreateHousehold, loadData]);
 
-  const addFamilyMember = useCallback((member: Omit<FamilyMember, 'id' | 'householdId'>) => {
-    setState(prev => {
-      if (!prev.household) return prev;
-      return { ...prev, familyMembers: [...prev.familyMembers, { ...member, id: genId(), householdId: prev.household.id }] };
+  // ── family members ─────────────────────────────────────
+  const addFamilyMember = useCallback(async (member: Omit<FamilyMember, 'id' | 'householdId'>) => {
+    if (!householdId) return;
+    await supabase.from('family_members').insert({
+      household_id: householdId,
+      name: member.name,
+      label: member.label as any,
+      food_type: member.foodType as any,
+      likes: member.likes,
+      dislikes: member.dislikes,
+      exclusions: member.exclusions,
+      spice_level: member.spiceLevel as any,
+      preferred_cuisines: member.preferredCuisines,
+      notes: member.notes,
     });
-  }, []);
+    await refreshData();
+  }, [householdId, refreshData]);
 
-  const updateFamilyMember = useCallback((id: string, updates: Partial<FamilyMember>) => {
-    setState(prev => ({
-      ...prev,
-      familyMembers: prev.familyMembers.map(m => m.id === id ? { ...m, ...updates } : m),
-    }));
-  }, []);
+  const updateFamilyMember = useCallback(async (id: string, updates: Partial<FamilyMember>) => {
+    const dbUpdates: any = {};
+    if (updates.name !== undefined) dbUpdates.name = updates.name;
+    if (updates.label !== undefined) dbUpdates.label = updates.label;
+    if (updates.foodType !== undefined) dbUpdates.food_type = updates.foodType;
+    if (updates.likes !== undefined) dbUpdates.likes = updates.likes;
+    if (updates.dislikes !== undefined) dbUpdates.dislikes = updates.dislikes;
+    if (updates.exclusions !== undefined) dbUpdates.exclusions = updates.exclusions;
+    if (updates.spiceLevel !== undefined) dbUpdates.spice_level = updates.spiceLevel;
+    if (updates.preferredCuisines !== undefined) dbUpdates.preferred_cuisines = updates.preferredCuisines;
+    if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
+    await supabase.from('family_members').update(dbUpdates).eq('id', id);
+    await refreshData();
+  }, [refreshData]);
 
-  const removeFamilyMember = useCallback((id: string) => {
-    setState(prev => ({ ...prev, familyMembers: prev.familyMembers.filter(m => m.id !== id) }));
-  }, []);
+  const removeFamilyMember = useCallback(async (id: string) => {
+    await supabase.from('family_members').delete().eq('id', id);
+    await refreshData();
+  }, [refreshData]);
 
-  const addRecipe = useCallback((recipe: Omit<Recipe, 'id' | 'householdId' | 'createdAt' | 'updatedAt'>) => {
-    const id = genId();
-    setState(prev => {
-      if (!prev.household) return prev;
-      const now = new Date().toISOString();
-      return { ...prev, recipes: [...prev.recipes, { ...recipe, id, householdId: prev.household.id, createdAt: now, updatedAt: now }] };
-    });
-    return id;
-  }, []);
+  // ── recipes ────────────────────────────────────────────
+  const addRecipe = useCallback(async (recipe: Omit<Recipe, 'id' | 'householdId' | 'createdAt' | 'updatedAt'>) => {
+    if (!householdId) return '';
+    const { data, error } = await supabase.from('recipes').insert({
+      household_id: householdId,
+      title: recipe.title,
+      description: recipe.description,
+      meal_types: recipe.mealTypes as any,
+      cuisine: recipe.cuisine,
+      sub_cuisine: recipe.subCuisine,
+      food_type: recipe.foodType as any,
+      health_tag: recipe.healthTag as any,
+      effort: recipe.effort as any,
+      mood_tag: recipe.moodTag,
+      prep_time_minutes: recipe.prepTimeMinutes,
+      difficulty: recipe.difficulty as any,
+      ingredients: recipe.ingredients,
+      instructions: recipe.instructions,
+      tags: recipe.tags,
+      favorite: recipe.favorite,
+      source: recipe.source,
+      source_name: recipe.sourceName,
+      source_link: recipe.sourceLink,
+      is_link_only: recipe.isLinkOnly,
+      kid_friendly: recipe.kidFriendly ?? false,
+      high_protein: recipe.highProtein ?? false,
+    }).select('id').single();
+    await refreshData();
+    return data?.id ?? '';
+  }, [householdId, refreshData]);
 
-  const updateRecipe = useCallback((id: string, updates: Partial<Recipe>) => {
-    setState(prev => ({
-      ...prev,
-      recipes: prev.recipes.map(r => r.id === id ? { ...r, ...updates, updatedAt: new Date().toISOString() } : r),
-    }));
-  }, []);
+  const updateRecipe = useCallback(async (id: string, updates: Partial<Recipe>) => {
+    const dbUpdates: any = {};
+    if (updates.title !== undefined) dbUpdates.title = updates.title;
+    if (updates.description !== undefined) dbUpdates.description = updates.description;
+    if (updates.mealTypes !== undefined) dbUpdates.meal_types = updates.mealTypes;
+    if (updates.cuisine !== undefined) dbUpdates.cuisine = updates.cuisine;
+    if (updates.subCuisine !== undefined) dbUpdates.sub_cuisine = updates.subCuisine;
+    if (updates.foodType !== undefined) dbUpdates.food_type = updates.foodType;
+    if (updates.healthTag !== undefined) dbUpdates.health_tag = updates.healthTag;
+    if (updates.effort !== undefined) dbUpdates.effort = updates.effort;
+    if (updates.moodTag !== undefined) dbUpdates.mood_tag = updates.moodTag;
+    if (updates.prepTimeMinutes !== undefined) dbUpdates.prep_time_minutes = updates.prepTimeMinutes;
+    if (updates.difficulty !== undefined) dbUpdates.difficulty = updates.difficulty;
+    if (updates.ingredients !== undefined) dbUpdates.ingredients = updates.ingredients;
+    if (updates.instructions !== undefined) dbUpdates.instructions = updates.instructions;
+    if (updates.tags !== undefined) dbUpdates.tags = updates.tags;
+    if (updates.favorite !== undefined) dbUpdates.favorite = updates.favorite;
+    if (updates.sourceName !== undefined) dbUpdates.source_name = updates.sourceName;
+    if (updates.sourceLink !== undefined) dbUpdates.source_link = updates.sourceLink;
+    if (updates.isLinkOnly !== undefined) dbUpdates.is_link_only = updates.isLinkOnly;
+    await supabase.from('recipes').update(dbUpdates).eq('id', id);
+    await refreshData();
+  }, [refreshData]);
 
-  const deleteRecipe = useCallback((id: string) => {
+  const deleteRecipe = useCallback(async (id: string) => {
+    await supabase.from('recipes').delete().eq('id', id);
     setState(prev => ({ ...prev, recipes: prev.recipes.filter(r => r.id !== id) }));
   }, []);
 
-  const toggleFavorite = useCallback((id: string) => {
+  const toggleFavorite = useCallback(async (id: string) => {
+    const recipe = state.recipes.find(r => r.id === id);
+    if (!recipe) return;
+    const newFav = !recipe.favorite;
+    // Optimistic update
     setState(prev => ({
       ...prev,
-      recipes: prev.recipes.map(r => r.id === id ? { ...r, favorite: !r.favorite, updatedAt: new Date().toISOString() } : r),
+      recipes: prev.recipes.map(r => r.id === id ? { ...r, favorite: newFav } : r),
     }));
-  }, []);
+    await supabase.from('recipes').update({ favorite: newFav }).eq('id', id);
+  }, [state.recipes]);
 
-  const createWeeklyPlan = useCallback((weekStartDate: string) => {
-    const id = genId();
-    setState(prev => {
-      if (!prev.household) return prev;
-      const existing = prev.weeklyPlans.find(p => p.weekStartDate === weekStartDate);
-      if (existing) return prev;
-      const now = new Date().toISOString();
-      const plan: WeeklyPlan = { id, householdId: prev.household.id, weekStartDate, status: 'draft', createdAt: now, updatedAt: now };
-      const slots: WeeklyMealSlot[] = [];
-      for (const day of DAYS_OF_WEEK) {
-        for (const meal of PLANNER_MEAL_TYPES) {
-          slots.push({ id: genId(), weeklyPlanId: id, dayOfWeek: day, mealType: meal, recipeIds: [], notes: '' });
-        }
+  // ── weekly plans ───────────────────────────────────────
+  const createWeeklyPlan = useCallback(async (weekStartDate: string) => {
+    if (!householdId) return '';
+    const existing = state.weeklyPlans.find(p => p.weekStartDate === weekStartDate);
+    if (existing) return existing.id;
+
+    const { data: plan } = await supabase.from('weekly_plans').insert({
+      household_id: householdId,
+      week_start_date: weekStartDate,
+      status: 'draft' as const,
+    }).select().single();
+
+    if (!plan) return '';
+
+    // Create empty slots
+    const slots = [];
+    for (const day of DAYS_OF_WEEK) {
+      for (const meal of PLANNER_MEAL_TYPES) {
+        slots.push({
+          weekly_plan_id: plan.id,
+          day_of_week: day as any,
+          meal_type: meal as any,
+          entry_type: 'cooked' as const,
+          notes: '',
+        });
       }
-      return { ...prev, weeklyPlans: [...prev.weeklyPlans, plan], mealSlots: [...prev.mealSlots, ...slots] };
-    });
-    return id;
-  }, []);
+    }
+    await supabase.from('weekly_meal_slots').insert(slots);
+    await refreshData();
+    return plan.id;
+  }, [householdId, state.weeklyPlans, refreshData]);
 
   const getWeeklyPlan = useCallback((weekStartDate: string) => {
     return state.weeklyPlans.find(p => p.weekStartDate === weekStartDate);
@@ -179,68 +389,147 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return state.mealSlots.filter(s => s.weeklyPlanId === planId);
   }, [state.mealSlots]);
 
-  const setMealSlot = useCallback((planId: string, day: DayOfWeek, meal: MealType, recipeIds: string[], notes?: string) => {
-    setState(prev => ({
-      ...prev,
-      mealSlots: prev.mealSlots.map(s =>
-        s.weeklyPlanId === planId && s.dayOfWeek === day && s.mealType === meal
-          ? { ...s, recipeIds, notes: notes ?? s.notes }
-          : s
-      ),
-    }));
-  }, []);
+  // ── slot manipulation ─────────────────────────────────
+  const setMealSlot = useCallback(async (planId: string, day: DayOfWeek, meal: MealType, recipeIds: string[], notes?: string) => {
+    const slot = state.mealSlots.find(s => s.weeklyPlanId === planId && s.dayOfWeek === day && s.mealType === meal);
+    if (!slot) return;
 
-  const addRecipeToSlot = useCallback((planId: string, day: DayOfWeek, meal: MealType, recipeId: string) => {
-    setState(prev => ({
-      ...prev,
-      mealSlots: prev.mealSlots.map(s =>
-        s.weeklyPlanId === planId && s.dayOfWeek === day && s.mealType === meal && !s.recipeIds.includes(recipeId)
-          ? { ...s, recipeIds: [...s.recipeIds, recipeId] }
-          : s
-      ),
-    }));
-  }, []);
+    // Delete existing items
+    await supabase.from('weekly_meal_slot_items').delete().eq('weekly_meal_slot_id', slot.id);
 
-  const removeRecipeFromSlot = useCallback((planId: string, day: DayOfWeek, meal: MealType, recipeId: string) => {
-    setState(prev => ({
-      ...prev,
-      mealSlots: prev.mealSlots.map(s =>
-        s.weeklyPlanId === planId && s.dayOfWeek === day && s.mealType === meal
-          ? { ...s, recipeIds: s.recipeIds.filter(id => id !== recipeId) }
-          : s
-      ),
-    }));
-  }, []);
+    // Insert new items
+    if (recipeIds.length > 0) {
+      const items = recipeIds.map((recipeId, idx) => ({
+        weekly_meal_slot_id: slot.id,
+        recipe_id: recipeId,
+        title: state.recipes.find(r => r.id === recipeId)?.title ?? '',
+        sort_order: idx,
+      }));
+      await supabase.from('weekly_meal_slot_items').insert(items);
+    }
+
+    if (notes !== undefined) {
+      await supabase.from('weekly_meal_slots').update({ notes }).eq('id', slot.id);
+    }
+
+    await refreshData();
+  }, [state.mealSlots, state.recipes, refreshData]);
+
+  const addRecipeToSlot = useCallback(async (planId: string, day: DayOfWeek, meal: MealType, recipeId: string) => {
+    const slot = state.mealSlots.find(s => s.weeklyPlanId === planId && s.dayOfWeek === day && s.mealType === meal);
+    if (!slot || slot.recipeIds.includes(recipeId)) return;
+
+    await supabase.from('weekly_meal_slot_items').insert({
+      weekly_meal_slot_id: slot.id,
+      recipe_id: recipeId,
+      title: state.recipes.find(r => r.id === recipeId)?.title ?? '',
+      sort_order: slot.items.length,
+    });
+    await refreshData();
+  }, [state.mealSlots, state.recipes, refreshData]);
+
+  const removeRecipeFromSlot = useCallback(async (planId: string, day: DayOfWeek, meal: MealType, recipeId: string) => {
+    const slot = state.mealSlots.find(s => s.weeklyPlanId === planId && s.dayOfWeek === day && s.mealType === meal);
+    if (!slot) return;
+    const item = slot.items.find(i => i.recipeId === recipeId);
+    if (item) {
+      await supabase.from('weekly_meal_slot_items').delete().eq('id', item.id);
+      await refreshData();
+    }
+  }, [state.mealSlots, refreshData]);
 
   const reorderRecipeInSlot = useCallback((planId: string, day: DayOfWeek, meal: MealType, fromIndex: number, toIndex: number) => {
+    // Optimistic local update; async DB update
     setState(prev => ({
       ...prev,
       mealSlots: prev.mealSlots.map(s => {
         if (s.weeklyPlanId !== planId || s.dayOfWeek !== day || s.mealType !== meal) return s;
         const ids = [...s.recipeIds];
-        const [moved] = ids.splice(fromIndex, 1);
-        ids.splice(toIndex, 0, moved);
-        return { ...s, recipeIds: ids };
+        const items = [...s.items];
+        const [movedId] = ids.splice(fromIndex, 1);
+        ids.splice(toIndex, 0, movedId);
+        const [movedItem] = items.splice(fromIndex, 1);
+        items.splice(toIndex, 0, movedItem);
+        return { ...s, recipeIds: ids, items };
       }),
     }));
   }, []);
 
-  const finalizePlan = useCallback((planId: string) => {
+  const finalizePlan = useCallback(async (planId: string) => {
+    await supabase.from('weekly_plans').update({ status: 'finalized' as const }).eq('id', planId);
     setState(prev => ({
       ...prev,
-      weeklyPlans: prev.weeklyPlans.map(p => p.id === planId ? { ...p, status: 'finalized' as const, updatedAt: new Date().toISOString() } : p),
+      weeklyPlans: prev.weeklyPlans.map(p => p.id === planId ? { ...p, status: 'finalized' as const } : p),
     }));
   }, []);
 
+  // ── V2: clear week ────────────────────────────────────
+  const clearWeek = useCallback(async (planId: string) => {
+    const slots = state.mealSlots.filter(s => s.weeklyPlanId === planId);
+    const slotIds = slots.map(s => s.id);
+    if (slotIds.length > 0) {
+      await supabase.from('weekly_meal_slot_items').delete().in('weekly_meal_slot_id', slotIds);
+    }
+    await refreshData();
+  }, [state.mealSlots, refreshData]);
+
+  // ── V2: copy last week ────────────────────────────────
+  const copyLastWeek = useCallback(async (currentWeekStart: string, previousWeekStart: string) => {
+    if (!householdId) return;
+
+    const prevPlan = state.weeklyPlans.find(p => p.weekStartDate === previousWeekStart);
+    if (!prevPlan) return;
+
+    // Ensure current plan exists
+    let currentPlan = state.weeklyPlans.find(p => p.weekStartDate === currentWeekStart);
+    if (!currentPlan) {
+      const id = await createWeeklyPlan(currentWeekStart);
+      // Reload to get the new plan
+      await refreshData();
+      return; // Need to call again after plan is created
+    }
+
+    const prevSlots = state.mealSlots.filter(s => s.weeklyPlanId === prevPlan.id);
+    const currentSlots = state.mealSlots.filter(s => s.weeklyPlanId === currentPlan!.id);
+
+    for (const prevSlot of prevSlots) {
+      if (prevSlot.recipeIds.length === 0) continue;
+      const curSlot = currentSlots.find(s => s.dayOfWeek === prevSlot.dayOfWeek && s.mealType === prevSlot.mealType);
+      if (!curSlot) continue;
+
+      // Clear existing items
+      await supabase.from('weekly_meal_slot_items').delete().eq('weekly_meal_slot_id', curSlot.id);
+
+      // Copy items
+      const items = prevSlot.items.map((item, idx) => ({
+        weekly_meal_slot_id: curSlot.id,
+        recipe_id: item.recipeId,
+        title: item.title,
+        sort_order: idx,
+        notes: item.notes,
+      }));
+      if (items.length > 0) {
+        await supabase.from('weekly_meal_slot_items').insert(items);
+      }
+
+      // Copy entry type
+      await supabase.from('weekly_meal_slots').update({ entry_type: prevSlot.entryType as any, notes: prevSlot.notes }).eq('id', curSlot.id);
+    }
+    await refreshData();
+  }, [householdId, state.weeklyPlans, state.mealSlots, createWeeklyPlan, refreshData]);
+
+  // ── swipe decisions (local only for now) ───────────────
   const addSwipeDecision = useCallback((decision: Omit<SwipeDecision, 'id' | 'householdId' | 'createdAt'>) => {
-    setState(prev => {
-      if (!prev.household) return prev;
-      return {
-        ...prev,
-        swipeDecisions: [...prev.swipeDecisions, { ...decision, id: genId(), householdId: prev.household.id, createdAt: new Date().toISOString() }],
-      };
-    });
-  }, []);
+    setState(prev => ({
+      ...prev,
+      swipeDecisions: [...prev.swipeDecisions, {
+        ...decision,
+        id: crypto.randomUUID(),
+        householdId: householdId ?? '',
+        createdAt: new Date().toISOString(),
+      }],
+    }));
+  }, [householdId]);
 
   const getSwipeDecisions = useCallback((weekStartDate: string) => {
     return state.swipeDecisions.filter(d => d.weekStartDate === weekStartDate);
@@ -253,7 +542,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }));
   }, []);
 
-  const isOnboarded = state.household !== null && state.familyMembers.length > 0;
+  const isOnboarded = householdId !== null;
 
   return (
     <AppContext.Provider value={{
@@ -277,6 +566,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addSwipeDecision,
       getSwipeDecisions,
       clearSwipeDecisions,
+      clearWeek,
+      copyLastWeek,
+      refreshData,
       isOnboarded,
     }}>
       {children}

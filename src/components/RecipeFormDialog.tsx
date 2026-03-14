@@ -88,6 +88,8 @@ export default function RecipeFormDialog({ open, onOpenChange, recipe }: Props) 
       sourceName: 'User',
       sourceLink: '',
       isLinkOnly: false,
+      kidFriendly: false,
+      highProtein: false,
     };
     if (isEdit) {
       updateRecipe(recipe.id, data);

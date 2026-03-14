@@ -1,12 +1,14 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, BookOpen, Calendar, Sparkles, ChefHat, UtensilsCrossed } from 'lucide-react';
+import { Home, BookOpen, Calendar, Flame, ClipboardList, ChefHat, UtensilsCrossed, Settings } from 'lucide-react';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: Home },
+  { to: '/planner', label: 'Planner', icon: Calendar },
   { to: '/recipes', label: 'Recipes', icon: BookOpen },
-  { to: '/planner', label: 'Weekly Planner', icon: Calendar },
-  { to: '/generate', label: 'AI Recipe Generator', icon: Sparkles },
-  { to: '/shortlist', label: 'Discover Meals', icon: ChefHat },
+  { to: '/cook-now', label: 'Cook Now', icon: Flame },
+  { to: '/prep', label: 'Prep', icon: ClipboardList },
+  { to: '/shortlist', label: 'Discover', icon: ChefHat },
+  { to: '/household', label: 'Settings', icon: Settings },
 ];
 
 export default function TopNav() {

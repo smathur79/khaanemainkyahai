@@ -137,9 +137,13 @@ export default function WeeklyPlannerPage() {
             <ChevronLeft className="h-5 w-5" />
           </Button>
           <div className="text-center">
-            <h1 className="text-xl font-bold">Weekly Planner</h1>
+            <h1 className="text-xl font-bold">{isPlanner ? 'Weekly Planner' : 'Weekly Calendar'}</h1>
             <p className="text-sm text-muted-foreground">{formatWeekLabel(currentMonday)}</p>
           </div>
+          <Button variant="ghost" size="icon" onClick={() => setCurrentMonday(addWeeks(currentMonday, 1))}>
+            <ChevronRight className="h-5 w-5" />
+          </Button>
+        </div>
           <Button variant="ghost" size="icon" onClick={() => setCurrentMonday(addWeeks(currentMonday, 1))}>
             <ChevronRight className="h-5 w-5" />
           </Button>

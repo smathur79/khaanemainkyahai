@@ -6,7 +6,7 @@ import { asianRecipes } from './bucket5-asian';
 import { indulgentRecipes } from './bucket6-indulgent';
 import { smoothieRecipes } from './bucket7-smoothies';
 import { gharKaKhanaRecipes } from './bucket8-ghar-ka-khana';
-import { snackAndExtrasRecipes } from './bucket9-snacks-extras';
+import { snackAndExtrasRecipes } from './bucket9-snacks-extras.ts';
 
 export type { SeedRecipe };
 

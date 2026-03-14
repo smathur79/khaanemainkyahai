@@ -2,7 +2,7 @@ import { Recipe } from '@/types/models';
 
 const now = new Date().toISOString();
 
-export type SeedRecipe = Omit<Recipe, 'id' | 'householdId'>;
+export type SeedRecipe = Omit<Recipe, 'id' | 'householdId'> & { kidFriendly?: boolean; highProtein?: boolean; };
 
 export const kavitaRecipes: SeedRecipe[] = [
   {

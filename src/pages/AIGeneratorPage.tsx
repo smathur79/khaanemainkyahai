@@ -78,7 +78,7 @@ export default function AIGeneratorPage() {
       foodType: (recipe.foodType as any) ?? 'vegetarian',
       healthTag: (recipe.healthTag as any) ?? 'balanced',
       effort: (recipe.effort as any) ?? 'medium',
-      moodTag: recipe.moodTag ?? 'comfort',
+      moodTag: (recipe.moodTag as any) ?? 'comfort',
       prepTimeMinutes: recipe.prepTimeMinutes ?? 30,
       difficulty: (recipe.difficulty as any) ?? 'Easy',
       ingredients: recipe.ingredients ?? [],

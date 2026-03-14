@@ -1,18 +1,35 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, BookOpen, Calendar, Flame, ClipboardList, ChefHat, UtensilsCrossed, Settings } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import {
+  Home, BookOpen, Calendar, Flame, ClipboardList, ChefHat,
+  UtensilsCrossed, Settings, LayoutTemplate, Sun, MessageSquare,
+} from 'lucide-react';
 
-const navItems = [
+const plannerNav = [
   { to: '/', label: 'Dashboard', icon: Home },
   { to: '/planner', label: 'Planner', icon: Calendar },
   { to: '/recipes', label: 'Recipes', icon: BookOpen },
   { to: '/cook-now', label: 'Cook Now', icon: Flame },
   { to: '/prep', label: 'Prep', icon: ClipboardList },
-  { to: '/shortlist', label: 'Discover', icon: ChefHat },
+  { to: '/templates', label: 'Templates', icon: LayoutTemplate },
+  { to: '/rituals', label: 'Rituals', icon: Sun },
+  { to: '/requests', label: 'Requests', icon: MessageSquare },
+  { to: '/household', label: 'Settings', icon: Settings },
+];
+
+const requestorNav = [
+  { to: '/', label: 'Dashboard', icon: Home },
+  { to: '/planner', label: 'Calendar', icon: Calendar },
+  { to: '/requests', label: 'Request', icon: MessageSquare },
+  { to: '/recipes', label: 'Recipes', icon: BookOpen },
+  { to: '/rituals', label: 'Rituals', icon: Sun },
   { to: '/household', label: 'Settings', icon: Settings },
 ];
 
 export default function TopNav() {
   const { pathname } = useLocation();
+  const { role } = useAuth();
+  const navItems = role === 'planner' ? plannerNav : requestorNav;
 
   return (
     <header className="hidden md:block sticky top-0 z-50 bg-card/80 backdrop-blur-md border-b border-border">

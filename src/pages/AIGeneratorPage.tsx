@@ -127,6 +127,8 @@ export default function AIGeneratorPage() {
       isLinkOnly: false,
       favorite: false,
       source: 'ai',
+      kidFriendly: false,
+      highProtein: false,
     });
     setSavedIds(prev => new Set(prev).add(index));
     toast.success(`${recipe.title} saved to your library!`);

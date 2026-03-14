@@ -17,7 +17,7 @@ export type Effort = 'quick' | 'medium' | 'weekend';
 export type MoodTag = 'comfort' | 'light' | 'kid-friendly' | 'adventurous' | 'hearty' | 'refreshing';
 
 export const DAYS_OF_WEEK: DayOfWeek[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-export const PLANNER_MEAL_TYPES: MealType[] = ['breakfast', 'lunch', 'dinner'];
+export const PLANNER_MEAL_TYPES: MealType[] = ['breakfast', 'lunch', 'snack', 'dinner'];
 export const MEAL_TYPES: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack', 'smoothie', 'dessert'];
 export const CUISINES = [
   'Indian', 'Italian', 'Chinese', 'Mexican', 'Continental', 'Mediterranean',

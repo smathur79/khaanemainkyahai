@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAppContext } from '@/context/AppContext';
-import { MealType, MEAL_TYPES, CUISINES, Recipe } from '@/types/models';
+import { MealType, MEAL_TYPES, CUISINES } from '@/types/models';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,90 +11,29 @@ import { Sparkles, Save, Loader2, Clock, Check } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface GeneratedRecipe {
   title: string;
   description: string;
   mealTypes: MealType[];
   cuisine: string;
+  subCuisine?: string;
   foodType: string;
+  healthTag: string;
+  effort: string;
+  moodTag: string;
   prepTimeMinutes: number;
   difficulty: string;
   ingredients: string[];
   instructions: string;
   tags: string[];
-}
-
-// Mock AI generation for V1 (no backend yet)
-function generateMockRecipes(cuisine: string, mealType: string, ingredients: string, maxPrepTime: number, count: number): GeneratedRecipe[] {
-  const templates: GeneratedRecipe[] = [
-    {
-      title: `${cuisine} Style ${mealType === 'breakfast' ? 'Morning Bowl' : mealType === 'lunch' ? 'Power Bowl' : 'Comfort Bowl'}`,
-      description: `A delicious ${cuisine.toLowerCase()}-inspired ${mealType} bowl packed with flavor and nutrition.`,
-      mealTypes: [mealType as MealType],
-      cuisine,
-      foodType: 'vegetarian',
-      prepTimeMinutes: Math.min(maxPrepTime, 25),
-      difficulty: 'Easy',
-      ingredients: ingredients ? ingredients.split(',').map(s => s.trim()) : ['Rice', 'Mixed vegetables', 'Spices', 'Fresh herbs'],
-      instructions: `Prepare the base ingredients. Cook with ${cuisine.toLowerCase()} spices and seasonings. Assemble in a bowl and garnish with fresh herbs.`,
-      tags: ['ai-generated', cuisine.toLowerCase(), mealType],
-    },
-    {
-      title: `Quick ${cuisine} ${mealType === 'breakfast' ? 'Toast' : mealType === 'lunch' ? 'Wrap' : 'Stir-fry'}`,
-      description: `A quick and easy ${cuisine.toLowerCase()} ${mealType} that comes together in minutes.`,
-      mealTypes: [mealType as MealType],
-      cuisine,
-      foodType: 'vegetarian',
-      prepTimeMinutes: Math.min(maxPrepTime, 15),
-      difficulty: 'Easy',
-      ingredients: ingredients ? ingredients.split(',').map(s => s.trim()) : ['Bread/Tortilla', 'Fresh vegetables', 'Cheese', 'Seasoning'],
-      instructions: `Heat your base. Add fillings with ${cuisine.toLowerCase()} flavors. Serve hot.`,
-      tags: ['ai-generated', 'quick', mealType],
-    },
-    {
-      title: `${cuisine} Spiced ${mealType === 'breakfast' ? 'Pancakes' : mealType === 'lunch' ? 'Salad' : 'Curry'}`,
-      description: `${cuisine} flavors meet comfort food in this delightful ${mealType} recipe.`,
-      mealTypes: [mealType as MealType],
-      cuisine,
-      foodType: 'vegetarian',
-      prepTimeMinutes: Math.min(maxPrepTime, 30),
-      difficulty: 'Medium',
-      ingredients: ingredients ? ingredients.split(',').map(s => s.trim()) : ['Main protein/grain', 'Onion', 'Tomato', 'Spice blend', 'Oil'],
-      instructions: `Prepare the ${cuisine.toLowerCase()} spice base. Cook the main ingredient. Combine and let flavors meld. Serve with accompaniments.`,
-      tags: ['ai-generated', 'flavorful', mealType],
-    },
-    {
-      title: `Hearty ${cuisine} ${mealType === 'breakfast' ? 'Hash' : mealType === 'lunch' ? 'Soup' : 'One-pot'}`,
-      description: `A hearty, warming ${mealType} with ${cuisine.toLowerCase()} influence.`,
-      mealTypes: [mealType as MealType],
-      cuisine,
-      foodType: 'vegetarian',
-      prepTimeMinutes: Math.min(maxPrepTime, 35),
-      difficulty: 'Easy',
-      ingredients: ingredients ? ingredients.split(',').map(s => s.trim()) : ['Potatoes/Lentils', 'Mixed vegetables', 'Broth', 'Herbs', 'Salt'],
-      instructions: `Sauté aromatics. Add vegetables and liquid. Season with ${cuisine.toLowerCase()} spices. Simmer until tender.`,
-      tags: ['ai-generated', 'hearty', 'comfort-food'],
-    },
-    {
-      title: `${cuisine} Fusion ${mealType === 'breakfast' ? 'Smoothie Bowl' : mealType === 'lunch' ? 'Rice Bowl' : 'Pasta'}`,
-      description: `A creative fusion dish combining ${cuisine.toLowerCase()} flavors with modern cooking.`,
-      mealTypes: [mealType as MealType],
-      cuisine,
-      foodType: 'vegetarian',
-      prepTimeMinutes: Math.min(maxPrepTime, 20),
-      difficulty: 'Easy',
-      ingredients: ingredients ? ingredients.split(',').map(s => s.trim()) : ['Base grain/noodles', 'Protein', 'Sauce', 'Garnish'],
-      instructions: `Cook the base. Prepare the ${cuisine.toLowerCase()}-inspired sauce. Combine and top with fresh garnishes.`,
-      tags: ['ai-generated', 'fusion', 'creative'],
-    },
-  ];
-
-  return templates.slice(0, count);
+  kidFriendly?: boolean;
+  highProtein?: boolean;
 }
 
 export default function AIGeneratorPage() {
-  const { addRecipe } = useAppContext();
+  const { addRecipe, familyMembers } = useAppContext();
   const [cuisine, setCuisine] = useState('Indian');
   const [mealType, setMealType] = useState<string>('lunch');
   const [ingredients, setIngredients] = useState('');
@@ -107,28 +46,51 @@ export default function AIGeneratorPage() {
   const handleGenerate = async () => {
     setLoading(true);
     setSavedIds(new Set());
-    await new Promise(r => setTimeout(r, 1500));
-    const generated = generateMockRecipes(cuisine, mealType, ingredients, parseInt(maxPrepTime) || 30, parseInt(count) || 3);
-    setResults(generated);
-    setLoading(false);
+    try {
+      const familyPreferences = familyMembers.map(m =>
+        `${m.name} (${m.label}): ${m.foodType}, likes ${m.likes.join(', ') || 'anything'}, dislikes ${m.dislikes.join(', ') || 'nothing'}, spice: ${m.spiceLevel}`
+      ).join('; ');
+
+      const { data, error } = await supabase.functions.invoke('generate-recipes', {
+        body: { cuisine, mealType, ingredients, maxPrepTime: parseInt(maxPrepTime), count: parseInt(count), familyPreferences },
+      });
+
+      if (error) throw error;
+      setResults(data?.recipes ?? []);
+      if ((data?.recipes ?? []).length === 0) {
+        toast.error('No recipes generated. Try different parameters.');
+      }
+    } catch (e: any) {
+      toast.error('Failed to generate recipes. Please try again.');
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSave = (recipe: GeneratedRecipe, index: number) => {
     addRecipe({
-      ...recipe,
-      foodType: recipe.foodType as any,
-      difficulty: recipe.difficulty as any,
-      subCuisine: '',
-      healthTag: 'balanced',
-      effort: 'medium',
-      moodTag: 'comfort',
+      title: recipe.title,
+      description: recipe.description,
+      mealTypes: recipe.mealTypes,
+      cuisine: recipe.cuisine,
+      subCuisine: recipe.subCuisine ?? '',
+      foodType: (recipe.foodType as any) ?? 'vegetarian',
+      healthTag: (recipe.healthTag as any) ?? 'balanced',
+      effort: (recipe.effort as any) ?? 'medium',
+      moodTag: (recipe.moodTag as any) ?? 'comfort',
+      prepTimeMinutes: recipe.prepTimeMinutes ?? 30,
+      difficulty: (recipe.difficulty as any) ?? 'Easy',
+      ingredients: recipe.ingredients ?? [],
+      instructions: recipe.instructions ?? '',
+      tags: [...(recipe.tags ?? []), 'ai-generated'],
+      favorite: false,
+      source: 'ai',
       sourceName: 'AI Generated',
       sourceLink: '',
       isLinkOnly: false,
-      favorite: false,
-      source: 'ai',
-      kidFriendly: false,
-      highProtein: false,
+      kidFriendly: recipe.kidFriendly ?? false,
+      highProtein: recipe.highProtein ?? false,
     });
     setSavedIds(prev => new Set(prev).add(index));
     toast.success(`${recipe.title} saved to your library!`);
@@ -142,7 +104,7 @@ export default function AIGeneratorPage() {
             <Sparkles className="h-6 w-6 text-primary" />
           </div>
           <h1 className="text-2xl font-bold">AI Recipe Generator</h1>
-          <p className="text-sm text-muted-foreground">Get recipe ideas tailored to your preferences</p>
+          <p className="text-sm text-muted-foreground">Get real recipe ideas tailored to your family</p>
         </div>
 
         <Card className="card-warm p-5 space-y-4">
@@ -180,7 +142,7 @@ export default function AIGeneratorPage() {
             </div>
           </div>
           <Button onClick={handleGenerate} className="w-full" disabled={loading}>
-            {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating...</> : <><Sparkles className="mr-2 h-4 w-4" /> Generate Recipes</>}
+            {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating with AI...</> : <><Sparkles className="mr-2 h-4 w-4" /> Generate Recipes</>}
           </Button>
         </Card>
 
@@ -202,16 +164,22 @@ export default function AIGeneratorPage() {
                 </div>
                 <p className="text-sm text-muted-foreground">{recipe.description}</p>
                 <div className="flex flex-wrap gap-1">
-                  <Badge variant="outline" className="text-xs capitalize">{recipe.mealTypes[0]}</Badge>
+                  {recipe.mealTypes?.map(m => <Badge key={m} variant="outline" className="text-xs capitalize">{m}</Badge>)}
                   <Badge variant="secondary" className="text-xs">{recipe.cuisine}</Badge>
                   <Badge variant="secondary" className="text-xs capitalize">{recipe.foodType}</Badge>
+                  {recipe.healthTag && <Badge variant="outline" className="text-xs capitalize">{recipe.healthTag}</Badge>}
                 </div>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Clock className="h-3 w-3" /> {recipe.prepTimeMinutes} min · {recipe.difficulty}
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  <strong>Ingredients:</strong> {recipe.ingredients.join(', ')}
+                  <strong>Ingredients:</strong> {recipe.ingredients?.join(', ')}
                 </div>
+                {recipe.instructions && (
+                  <div className="text-xs text-muted-foreground">
+                    <strong>Instructions:</strong> {recipe.instructions}
+                  </div>
+                )}
               </Card>
             ))}
           </div>

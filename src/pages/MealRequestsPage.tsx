@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useAppContext } from '@/context/AppContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -6,20 +6,18 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DAYS_OF_WEEK, PLANNER_MEAL_TYPES, DayOfWeek, MealType } from '@/types/models';
-import { Send, Sparkles, BookOpen, Check, X, Loader2, PenLine } from 'lucide-react';
+import { getMonday, formatDateKey, formatWeekLabel } from '@/lib/dateUtils';
+import { Send, Check, X, Loader2, Heart, Calendar, Sparkles } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 
 interface MealRequest {
   id: string;
   text: string;
   link: string;
-  request_type: 'meal_request' | 'recipe_link' | 'order_in_request';
+  request_type: string;
   requested_day: DayOfWeek | null;
   requested_meal_type: MealType | null;
   status: 'open' | 'reviewed' | 'added' | 'dismissed';
@@ -27,279 +25,269 @@ interface MealRequest {
   created_by_user_id: string;
 }
 
-type RequestMode = 'type' | 'library' | 'ai';
+const MEAL_EMOJI: Record<string, string> = {
+  breakfast: '🍳',
+  lunch: '🍚',
+  snack: '🍪',
+  dinner: '🍽️',
+};
 
-interface AIIdea {
-  title: string;
-  description: string;
-}
+// ════════════════════════════════════════════════════════════════════════════
+// REQUESTOR VIEW — ultra-simple for kids and grandparents
+// ════════════════════════════════════════════════════════════════════════════
 
-export default function MealRequestsPage() {
-  const { user, householdId, role } = useAuth();
-  const { recipes } = useAppContext();
-  const isPlanner = role === 'planner';
-
+function RequestorView() {
+  const { user, householdId } = useAuth();
+  const { recipes, weeklyPlans, mealSlots } = useAppContext();
+  const [tab, setTab] = useState<'request' | 'calendar'>('request');
+  const [text, setText] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const [requests, setRequests] = useState<MealRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
 
-  // Form state
-  const [mode, setMode] = useState<RequestMode>('type');
-  const [text, setText] = useState('');
-  const [note, setNote] = useState('');
-  const [requestedDay, setRequestedDay] = useState<string>('');
-  const [requestedMeal, setRequestedMeal] = useState<string>('');
+  // Week data for calendar view
+  const monday = getMonday(new Date());
+  const weekKey = formatDateKey(monday);
+  const plan = weeklyPlans.find(p => p.weekStartDate === weekKey);
+  const slots = plan ? mealSlots.filter(s => s.weeklyPlanId === plan.id) : [];
 
-  // Library state
-  const [librarySearch, setLibrarySearch] = useState('');
-  const [selectedRecipe, setSelectedRecipe] = useState<string>('');
-
-  // AI state
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiIdeas, setAiIdeas] = useState<AIIdea[]>([]);
-  const [selectedAiIdea, setSelectedAiIdea] = useState<string>('');
-
-  const loadRequests = async () => {
-    if (!householdId) return;
-    let query = supabase
+  // Load my requests
+  useEffect(() => {
+    if (!householdId || !user) return;
+    supabase
       .from('meal_requests')
       .select('*')
       .eq('household_id', householdId)
-      .order('created_at', { ascending: false });
+      .eq('created_by_user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(10)
+      .then(({ data }) => { setRequests((data as MealRequest[]) ?? []); setLoading(false); });
+  }, [householdId, user]);
 
-    // Requestors only see their own requests
-    if (!isPlanner && user) {
-      query = query.eq('created_by_user_id', user.id);
-    }
+  // Inspiration: popular/favorite recipes
+  const inspiration = useMemo(() => {
+    return recipes
+      .filter(r => !r.isLinkOnly)
+      .sort((a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0))
+      .slice(0, 12);
+  }, [recipes]);
 
-    const { data } = await query;
-    setRequests((data as MealRequest[]) ?? []);
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    loadRequests();
-  }, [householdId]);
-
-  const getRequestText = (): string => {
-    if (mode === 'type') return text.trim();
-    if (mode === 'library') return selectedRecipe;
-    if (mode === 'ai') return selectedAiIdea;
-    return '';
-  };
-
-  const handleSubmit = async () => {
-    const requestText = getRequestText();
-    if (!requestText) return;
-    if (!householdId || !user) return;
+  const handleSubmit = async (dishText?: string) => {
+    const requestText = dishText || text.trim();
+    if (!requestText || !householdId || !user) return;
     setSubmitting(true);
     try {
       await supabase.from('meal_requests').insert({
         household_id: householdId,
         created_by_user_id: user.id,
-        text: requestText + (note.trim() ? ` — ${note.trim()}` : ''),
+        text: requestText,
         link: '',
-        request_type: 'meal_request' as const,
-        requested_day: (requestedDay && requestedDay !== 'any') ? (requestedDay as any) : null,
-        requested_meal_type: (requestedMeal && requestedMeal !== 'any') ? (requestedMeal as any) : null,
-        status: 'open' as const,
+        request_type: 'meal_request',
+        status: 'open',
       });
       setText('');
-      setNote('');
-      setSelectedRecipe('');
-      setSelectedAiIdea('');
-      setRequestedDay('');
-      setRequestedMeal('');
-      toast.success('Request sent!');
-      await loadRequests();
+      toast.success('Request sent! 🎉');
+      // Refresh
+      const { data } = await supabase
+        .from('meal_requests')
+        .select('*')
+        .eq('household_id', householdId)
+        .eq('created_by_user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+      setRequests((data as MealRequest[]) ?? []);
     } catch {
-      toast.error('Failed to send request');
+      toast.error('Oops, try again');
     } finally {
       setSubmitting(false);
     }
   };
 
+  return (
+    <AppLayout>
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-5 max-w-lg mx-auto">
+
+        {/* Tab switcher — big friendly buttons */}
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => setTab('request')}
+            className={`p-4 rounded-2xl text-center transition-all ${
+              tab === 'request'
+                ? 'bg-primary text-primary-foreground shadow-lg scale-[1.02]'
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+            }`}
+          >
+            <Heart className="h-7 w-7 mx-auto mb-1" />
+            <div className="font-semibold">Request</div>
+            <div className="text-xs opacity-80">Ask for a dish</div>
+          </button>
+          <button
+            onClick={() => setTab('calendar')}
+            className={`p-4 rounded-2xl text-center transition-all ${
+              tab === 'calendar'
+                ? 'bg-primary text-primary-foreground shadow-lg scale-[1.02]'
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+            }`}
+          >
+            <Calendar className="h-7 w-7 mx-auto mb-1" />
+            <div className="font-semibold">This Week</div>
+            <div className="text-xs opacity-80">See the plan</div>
+          </button>
+        </div>
+
+        <AnimatePresence mode="wait">
+          {tab === 'request' && (
+            <motion.div key="request" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="space-y-5">
+              {/* Input */}
+              <Card className="card-warm p-5 space-y-4">
+                <h2 className="text-xl font-bold text-center">What are you craving? 😋</h2>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Type a dish name..."
+                    value={text}
+                    onChange={e => setText(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+                    className="text-base h-12"
+                  />
+                  <Button onClick={() => handleSubmit()} disabled={!text.trim() || submitting} className="h-12 px-5">
+                    {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+                  </Button>
+                </div>
+              </Card>
+
+              {/* Inspiration — tappable chips */}
+              {inspiration.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    <h3 className="text-sm font-semibold text-muted-foreground">Tap to request</h3>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {inspiration.map(r => (
+                      <button
+                        key={r.id}
+                        onClick={() => handleSubmit(r.title)}
+                        className="px-3 py-2 rounded-full bg-muted hover:bg-primary/10 hover:text-primary transition-colors text-sm font-medium"
+                      >
+                        {r.favorite && '❤️ '}{r.title}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* My requests */}
+              {requests.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-muted-foreground mb-2">Your requests</h3>
+                  <div className="space-y-2">
+                    {requests.slice(0, 5).map(req => (
+                      <div key={req.id} className="flex items-center gap-2 text-sm bg-muted rounded-lg p-3">
+                        <span className="flex-1">{req.text}</span>
+                        {req.status === 'added' && <Badge className="bg-green-500/10 text-green-700 text-xs">Added! ✅</Badge>}
+                        {req.status === 'open' && <Badge variant="outline" className="text-xs">Pending</Badge>}
+                        {req.status === 'dismissed' && <Badge variant="outline" className="text-xs text-muted-foreground">Maybe later</Badge>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {tab === 'calendar' && (
+            <motion.div key="calendar" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }}>
+              <Card className="card-warm p-4">
+                <h2 className="text-lg font-bold mb-1">This Week's Plan</h2>
+                <p className="text-xs text-muted-foreground mb-4">{formatWeekLabel(monday)}</p>
+
+                {!plan ? (
+                  <p className="text-sm text-muted-foreground text-center py-6">No plan this week yet</p>
+                ) : (
+                  <div className="space-y-3">
+                    {DAYS_OF_WEEK.map(day => {
+                      const daySlots = slots.filter(s => s.dayOfWeek === day);
+                      const hasMeals = daySlots.some(s => s.recipeIds.length > 0);
+                      if (!hasMeals) return null;
+
+                      return (
+                        <div key={day}>
+                          <div className="font-semibold text-sm mb-1">{day}</div>
+                          <div className="space-y-1 ml-2">
+                            {PLANNER_MEAL_TYPES.map(meal => {
+                              const slot = daySlots.find(s => s.mealType === meal);
+                              if (!slot || slot.recipeIds.length === 0) return null;
+                              const slotRecipes = slot.recipeIds.map(id => recipes.find(r => r.id === id)?.title).filter(Boolean);
+                              return (
+                                <div key={meal} className="text-sm">
+                                  <span className="text-muted-foreground">{MEAL_EMOJI[meal]}</span>{' '}
+                                  {slotRecipes.join(', ')}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+    </AppLayout>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// PLANNER VIEW — full request management
+// ════════════════════════════════════════════════════════════════════════════
+
+function PlannerView() {
+  const { user, householdId } = useAuth();
+  const [requests, setRequests] = useState<MealRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!householdId) return;
+    supabase
+      .from('meal_requests')
+      .select('*')
+      .eq('household_id', householdId)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => { setRequests((data as MealRequest[]) ?? []); setLoading(false); });
+  }, [householdId]);
+
   const handleUpdateStatus = async (id: string, status: 'added' | 'dismissed') => {
     await supabase.from('meal_requests').update({ status }).eq('id', id);
-    toast.success(status === 'added' ? 'Added to plan!' : 'Dismissed');
-    await loadRequests();
-  };
-
-  const handleGetAiIdeas = async () => {
-    setAiLoading(true);
-    setAiIdeas([]);
-    try {
-      const { data, error } = await supabase.functions.invoke('generate-recipes', {
-        body: { cuisine: 'any', mealType: requestedMeal || 'lunch', count: 5, maxPrepTime: 45 },
-      });
-      if (error) throw error;
-      const ideas: AIIdea[] = (data?.recipes ?? []).map((r: any) => ({
-        title: r.title,
-        description: r.description,
-      }));
-      setAiIdeas(ideas);
-      if (ideas.length === 0) toast.info('No ideas generated, try again');
-    } catch {
-      toast.error('AI generation failed');
-    } finally {
-      setAiLoading(false);
-    }
+    toast.success(status === 'added' ? 'Marked as added!' : 'Dismissed');
+    const { data } = await supabase
+      .from('meal_requests')
+      .select('*')
+      .eq('household_id', householdId)
+      .order('created_at', { ascending: false });
+    setRequests((data as MealRequest[]) ?? []);
   };
 
   const openRequests = requests.filter(r => r.status === 'open');
   const pastRequests = requests.filter(r => r.status !== 'open');
 
-  const filteredLibraryRecipes = recipes.filter(r =>
-    !librarySearch || r.title.toLowerCase().includes(librarySearch.toLowerCase())
-  ).slice(0, 12);
-
-  const statusBadge = (s: string) => {
-    if (s === 'added') return <Badge className="bg-green-500/10 text-green-700 border-green-200">Added</Badge>;
-    if (s === 'dismissed') return <Badge variant="outline" className="text-muted-foreground">Dismissed</Badge>;
-    return <Badge variant="outline">Open</Badge>;
-  };
-
   return (
     <AppLayout>
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-2xl mx-auto">
-        <h1 className="text-2xl font-bold">
-          {isPlanner ? 'Family Requests' : 'Request a Meal'}
-        </h1>
+        <h1 className="text-2xl font-bold">Family Requests</h1>
 
-        {/* Submit form */}
-        <Card className="card-warm p-5 space-y-4">
-          <h2 className="font-semibold">What are you craving?</h2>
-
-          {/* Mode selector */}
-          <div className="flex gap-2">
-            <Button variant={mode === 'type' ? 'default' : 'outline'} size="sm" onClick={() => setMode('type')}>
-              <PenLine className="h-4 w-4 mr-1" /> Type it
-            </Button>
-            <Button variant={mode === 'library' ? 'default' : 'outline'} size="sm" onClick={() => setMode('library')}>
-              <BookOpen className="h-4 w-4 mr-1" /> From Recipes
-            </Button>
-            <Button variant={mode === 'ai' ? 'default' : 'outline'} size="sm" onClick={() => setMode('ai')}>
-              <Sparkles className="h-4 w-4 mr-1" /> AI Ideas
-            </Button>
-          </div>
-
-          {/* Mode: Type */}
-          {mode === 'type' && (
-            <div>
-              <Label className="text-xs">Meal name</Label>
-              <Input
-                placeholder="e.g. Butter chicken, Caesar salad..."
-                value={text}
-                onChange={e => setText(e.target.value)}
-              />
-            </div>
-          )}
-
-          {/* Mode: Library */}
-          {mode === 'library' && (
-            <div className="space-y-2">
-              <Input
-                placeholder="Search recipes..."
-                value={librarySearch}
-                onChange={e => setLibrarySearch(e.target.value)}
-              />
-              <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
-                {filteredLibraryRecipes.map(r => (
-                  <button
-                    key={r.id}
-                    onClick={() => setSelectedRecipe(r.title)}
-                    className={`text-left text-xs p-2 rounded-lg border transition-colors ${
-                      selectedRecipe === r.title
-                        ? 'border-primary bg-primary/10 font-medium'
-                        : 'border-border hover:border-primary/50'
-                    }`}
-                  >
-                    <div className="font-medium truncate">{r.title}</div>
-                    <div className="text-muted-foreground">{r.cuisine} · {r.prepTimeMinutes}m</div>
-                  </button>
-                ))}
-              </div>
-              {selectedRecipe && (
-                <p className="text-sm text-primary font-medium">Selected: {selectedRecipe}</p>
-              )}
-            </div>
-          )}
-
-          {/* Mode: AI */}
-          {mode === 'ai' && (
-            <div className="space-y-3">
-              <Button onClick={handleGetAiIdeas} variant="outline" disabled={aiLoading} className="w-full">
-                {aiLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                {aiLoading ? 'Generating...' : 'Get Meal Ideas'}
-              </Button>
-              {aiIdeas.length > 0 && (
-                <div className="space-y-2 max-h-56 overflow-y-auto">
-                  {aiIdeas.map((idea, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setSelectedAiIdea(idea.title)}
-                      className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                        selectedAiIdea === idea.title
-                          ? 'border-primary bg-primary/10'
-                          : 'border-border hover:border-primary/50'
-                      }`}
-                    >
-                      <div className="text-sm font-medium">{idea.title}</div>
-                      <div className="text-xs text-muted-foreground">{idea.description}</div>
-                    </button>
-                  ))}
-                </div>
-              )}
-              {selectedAiIdea && (
-                <p className="text-sm text-primary font-medium">Selected: {selectedAiIdea}</p>
-              )}
-            </div>
-          )}
-
-          {/* Optional fields */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label className="text-xs">Day (optional)</Label>
-              <Select value={requestedDay} onValueChange={setRequestedDay}>
-                <SelectTrigger><SelectValue placeholder="Any day" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="any">Any day</SelectItem>
-                  {DAYS_OF_WEEK.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="text-xs">Meal (optional)</Label>
-              <Select value={requestedMeal} onValueChange={setRequestedMeal}>
-                <SelectTrigger><SelectValue placeholder="Any meal" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="any">Any meal</SelectItem>
-                  {PLANNER_MEAL_TYPES.map(m => <SelectItem key={m} value={m} className="capitalize">{m}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div>
-            <Label className="text-xs">Note (optional)</Label>
-            <Input
-              placeholder="e.g. Make it spicy, for 4 people..."
-              value={note}
-              onChange={e => setNote(e.target.value)}
-            />
-          </div>
-
-          <Button onClick={handleSubmit} className="w-full" disabled={!getRequestText() || submitting}>
-            {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-            Send Request
-          </Button>
-        </Card>
-
-        {/* Open requests */}
-        {openRequests.length > 0 && (
+        {loading ? (
+          <div className="text-center py-8"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></div>
+        ) : openRequests.length === 0 ? (
+          <Card className="card-warm p-8 text-center">
+            <p className="text-muted-foreground">No pending requests 🎉</p>
+          </Card>
+        ) : (
           <div className="space-y-3">
             <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
-              {isPlanner ? `Open Requests (${openRequests.length})` : `Your Open Requests (${openRequests.length})`}
+              Open Requests ({openRequests.length})
             </h3>
             {openRequests.map(req => (
               <Card key={req.id} className="card-warm p-4">
@@ -312,23 +300,20 @@ export default function MealRequestsPage() {
                       <span>{new Date(req.created_at).toLocaleDateString()}</span>
                     </div>
                   </div>
-                  {isPlanner && (
-                    <div className="flex gap-1 shrink-0">
-                      <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={() => handleUpdateStatus(req.id, 'added')}>
-                        <Check className="h-4 w-4" />
-                      </Button>
-                      <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground" onClick={() => handleUpdateStatus(req.id, 'dismissed')}>
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  )}
+                  <div className="flex gap-1 shrink-0">
+                    <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={() => handleUpdateStatus(req.id, 'added')}>
+                      <Check className="h-4 w-4" />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground" onClick={() => handleUpdateStatus(req.id, 'dismissed')}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </Card>
             ))}
           </div>
         )}
 
-        {/* Past requests */}
         {pastRequests.length > 0 && (
           <div className="space-y-3">
             <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Past</h3>
@@ -336,17 +321,23 @@ export default function MealRequestsPage() {
               <Card key={req.id} className="p-3 opacity-60">
                 <div className="flex items-center gap-2 text-sm">
                   <span className="flex-1 truncate">{req.text}</span>
-                  {statusBadge(req.status)}
+                  {req.status === 'added' && <Badge className="bg-green-500/10 text-green-700 border-green-200 text-xs">Added</Badge>}
+                  {req.status === 'dismissed' && <Badge variant="outline" className="text-xs text-muted-foreground">Dismissed</Badge>}
                 </div>
               </Card>
             ))}
           </div>
         )}
-
-        {!loading && requests.length === 0 && (
-          <p className="text-center text-muted-foreground text-sm py-8">No requests yet. Submit your first craving!</p>
-        )}
       </motion.div>
     </AppLayout>
   );
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// MAIN EXPORT — route based on role
+// ════════════════════════════════════════════════════════════════════════════
+
+export default function MealRequestsPage() {
+  const { role } = useAuth();
+  return role === 'planner' ? <PlannerView /> : <RequestorView />;
 }

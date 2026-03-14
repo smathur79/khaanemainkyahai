@@ -4,7 +4,6 @@ import { useAppContext } from '@/context/AppContext';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Copy, RefreshCw, Users, LogOut, Shield, Eye } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
@@ -12,27 +11,31 @@ import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
 export default function HouseholdPage() {
-  const { householdName, accessCode, role, regenerateAccessCode, leaveHousehold } = useAuth();
+  const { householdName, accessCode, plannerCode, role, regenerateAccessCode, regeneratePlannerCode, leaveHousehold } = useAuth();
   const { familyMembers } = useAppContext();
-  const [regenerating, setRegenerating] = useState(false);
+  const [regenerating, setRegenerating] = useState<'access' | 'planner' | null>(null);
 
-  const handleCopyCode = () => {
-    if (accessCode) {
-      navigator.clipboard.writeText(accessCode);
-      toast.success('Access code copied!');
+  const handleCopy = (code: string | null, label: string) => {
+    if (code) {
+      navigator.clipboard.writeText(code);
+      toast.success(`${label} code copied!`);
     }
   };
 
-  const handleRegenerate = async () => {
-    setRegenerating(true);
+  const handleRegenerateAccess = async () => {
+    setRegenerating('access');
     try {
       const newCode = await regenerateAccessCode();
-      toast.success(`New access code: ${newCode}`);
-    } catch {
-      toast.error('Failed to regenerate code');
-    } finally {
-      setRegenerating(false);
-    }
+      toast.success(`New requestor code: ${newCode}`);
+    } catch { toast.error('Failed'); } finally { setRegenerating(null); }
+  };
+
+  const handleRegeneratePlanner = async () => {
+    setRegenerating('planner');
+    try {
+      const newCode = await regeneratePlannerCode();
+      toast.success(`New planner code: ${newCode}`);
+    } catch { toast.error('Failed'); } finally { setRegenerating(null); }
   };
 
   const handleLeave = async () => {
@@ -56,32 +59,49 @@ export default function HouseholdPage() {
                 {role === 'planner' ? (
                   <><Shield className="h-3 w-3 mr-1" /> Planner</>
                 ) : (
-                  <><Eye className="h-3 w-3 mr-1" /> Viewer</>
+                  <><Eye className="h-3 w-3 mr-1" /> Viewer / Requestor</>
                 )}
               </Badge>
             </div>
           </div>
 
-          {/* Access Code */}
+          {/* Requestor Access Code */}
           <div>
-            <Label className="text-sm text-muted-foreground">Access Code</Label>
+            <Label className="text-sm text-muted-foreground">Requestor Access Code</Label>
+            <p className="text-xs text-muted-foreground mb-1">Share this to invite family members as viewers/requestors</p>
             <div className="flex items-center gap-2 mt-1">
               <div className="flex-1 bg-muted rounded-lg px-4 py-3 text-center font-mono text-2xl tracking-[0.3em] font-bold">
                 {accessCode ?? '------'}
               </div>
-              <Button variant="outline" size="icon" onClick={handleCopyCode}>
+              <Button variant="outline" size="icon" onClick={() => handleCopy(accessCode, 'Requestor')}>
                 <Copy className="h-4 w-4" />
               </Button>
               {role === 'planner' && (
-                <Button variant="outline" size="icon" onClick={handleRegenerate} disabled={regenerating}>
-                  <RefreshCw className={`h-4 w-4 ${regenerating ? 'animate-spin' : ''}`} />
+                <Button variant="outline" size="icon" onClick={handleRegenerateAccess} disabled={regenerating !== null}>
+                  <RefreshCw className={`h-4 w-4 ${regenerating === 'access' ? 'animate-spin' : ''}`} />
                 </Button>
               )}
             </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              Share this code with family members so they can join your household.
-            </p>
           </div>
+
+          {/* Planner Access Code - only visible to planners */}
+          {role === 'planner' && (
+            <div>
+              <Label className="text-sm text-muted-foreground">Planner Access Code</Label>
+              <p className="text-xs text-muted-foreground mb-1">Share this to invite someone as a co-planner (full access)</p>
+              <div className="flex items-center gap-2 mt-1">
+                <div className="flex-1 bg-primary/5 border border-primary/20 rounded-lg px-4 py-3 text-center font-mono text-2xl tracking-[0.3em] font-bold text-primary">
+                  {plannerCode ?? '------'}
+                </div>
+                <Button variant="outline" size="icon" onClick={() => handleCopy(plannerCode, 'Planner')}>
+                  <Copy className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" size="icon" onClick={handleRegeneratePlanner} disabled={regenerating !== null}>
+                  <RefreshCw className={`h-4 w-4 ${regenerating === 'planner' ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
+            </div>
+          )}
         </Card>
 
         {/* Family Members */}

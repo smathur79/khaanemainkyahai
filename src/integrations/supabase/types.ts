@@ -105,6 +105,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          planner_code: string
           updated_at: string
         }
         Insert: {
@@ -112,6 +113,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          planner_code?: string
           updated_at?: string
         }
         Update: {
@@ -119,6 +121,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          planner_code?: string
           updated_at?: string
         }
         Relationships: []

@@ -145,42 +145,55 @@ export default function WeeklyPlannerPage() {
           </Button>
         </div>
 
-        {/* Actions */}
-        <div className="flex flex-wrap gap-2">
-          <Button onClick={handleAutoFill} variant="outline" size="sm">
-            <Wand2 className="mr-1 h-4 w-4" /> Auto-fill
-          </Button>
-          <Button onClick={handleCopyLastWeek} variant="outline" size="sm">
-            <CopyCheck className="mr-1 h-4 w-4" /> Copy Last Week
-          </Button>
-          {plan && (
-            <>
-              <Button onClick={handleClearWeek} variant="outline" size="sm">
-                <Trash2 className="mr-1 h-4 w-4" /> Clear Week
-              </Button>
-              <Button onClick={handleFinalize} size="sm" disabled={plan.status === 'finalized'}>
-                <Check className="mr-1 h-4 w-4" /> {plan.status === 'finalized' ? 'Finalized' : 'Finalize'}
-              </Button>
-            </>
-          )}
-          {plan?.status === 'finalized' && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => generateWeeklyPlanPdf({
-                weekLabel: formatWeekLabel(currentMonday),
-                householdName: household?.name ?? 'Family',
-                slots,
-                recipes,
-              })}
-            >
-              <Download className="mr-1 h-4 w-4" /> PDF
+        {/* Actions - planner only */}
+        {isPlanner && (
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={handleAutoFill} variant="outline" size="sm">
+              <Wand2 className="mr-1 h-4 w-4" /> Auto-fill
             </Button>
-          )}
-          <Badge variant="outline" className="text-xs self-center">
-            {plan ? (plan.status === 'finalized' ? '✅ Finalized' : '📝 Draft') : 'No plan'}
-          </Badge>
-        </div>
+            <Button onClick={handleCopyLastWeek} variant="outline" size="sm">
+              <CopyCheck className="mr-1 h-4 w-4" /> Copy Last Week
+            </Button>
+            {plan && (
+              <>
+                <Button onClick={handleClearWeek} variant="outline" size="sm">
+                  <Trash2 className="mr-1 h-4 w-4" /> Clear Week
+                </Button>
+                <Button onClick={handleFinalize} size="sm" disabled={plan.status === 'finalized'}>
+                  <Check className="mr-1 h-4 w-4" /> {plan.status === 'finalized' ? 'Finalized' : 'Finalize'}
+                </Button>
+              </>
+            )}
+            {plan?.status === 'finalized' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => generateWeeklyPlanPdf({
+                  weekLabel: formatWeekLabel(currentMonday),
+                  householdName: household?.name ?? 'Family',
+                  slots,
+                  recipes,
+                })}
+              >
+                <Download className="mr-1 h-4 w-4" /> PDF
+              </Button>
+            )}
+            <Badge variant="outline" className="text-xs self-center">
+              {plan ? (plan.status === 'finalized' ? '✅ Finalized' : '📝 Draft') : 'No plan'}
+            </Badge>
+          </div>
+        )}
+
+        {/* Requestor CTA */}
+        {!isPlanner && (
+          <div className="flex justify-center">
+            <Button asChild>
+              <Link to="/requests">
+                <MessageSquare className="mr-2 h-4 w-4" /> Request a Meal
+              </Link>
+            </Button>
+          </div>
+        )}
 
         {/* Grid */}
         <div className="overflow-x-auto">
@@ -201,6 +214,26 @@ export default function WeeklyPlannerPage() {
                   const slotRecipes = getSlotRecipes(day, meal);
                   const slotRecipeIds = new Set(slotRecipes.map(r => r.id));
                   const hasRecipes = slotRecipes.length > 0;
+
+                  if (!isPlanner) {
+                    return (
+                      <Card key={`${day}-${meal}`} className={`p-2 min-h-[60px] flex flex-col justify-center ${hasRecipes ? '' : 'border-dashed'}`}>
+                        {hasRecipes ? (
+                          <div className="space-y-0.5">
+                            {slotRecipes.map(r => (
+                              <div key={r.id}>
+                                <div className="text-xs font-semibold truncate">{r.title}</div>
+                                <div className="text-[10px] text-muted-foreground">{r.cuisine} · {r.prepTimeMinutes}m</div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-xs text-muted-foreground text-center">—</div>
+                        )}
+                      </Card>
+                    );
+                  }
+
                   return (
                     <Popover key={`${day}-${meal}`}>
                       <PopoverTrigger asChild>

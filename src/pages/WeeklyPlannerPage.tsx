@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { ChevronUp, ChevronDown } from 'lucide-react';
+import { ChevronUp, ChevronDown, MessageSquare } from 'lucide-react';
 import { useAppContext } from '@/context/AppContext';
+import { useAuth } from '@/context/AuthContext';
 import { DAYS_OF_WEEK, PLANNER_MEAL_TYPES, DayOfWeek, MealType } from '@/types/models';
 import { getMonday, formatWeekLabel, formatDateKey, addWeeks } from '@/lib/dateUtils';
 import { getRecommendations } from '@/lib/recommendations';
@@ -10,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ChevronLeft, ChevronRight, Check, X, Copy, Wand2, Download, Plus, Trash2, CopyCheck } from 'lucide-react';
 import { generateWeeklyPlanPdf } from '@/lib/generatePlanPdf';
+import { Link } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';

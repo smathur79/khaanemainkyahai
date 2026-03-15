@@ -97,17 +97,14 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {/* This Week */}
+        {/* This Week — no finalize badge */}
         <Card className="card-warm p-5">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold">This Week</h2>
-            <Badge variant={currentPlan?.status === 'finalized' ? 'default' : 'outline'}>
-              {currentPlan ? (currentPlan.status === 'finalized' ? 'Finalized' : 'Draft') : 'Not started'}
-            </Badge>
+            <Link to="/planner"><Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted">{filledSlots.length}/{totalSlots} planned</Badge></Link>
           </div>
           {currentPlan ? (
             <div>
-              <div className="text-sm text-muted-foreground mb-3">{filledSlots.length} of {totalSlots} meals planned</div>
               <div className="w-full bg-muted rounded-full h-2 mb-4">
                 <div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${(filledSlots.length / totalSlots) * 100}%` }} />
               </div>

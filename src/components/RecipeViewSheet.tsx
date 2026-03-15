@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import { Recipe } from '@/types/models';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
@@ -9,7 +10,7 @@ interface Props {
   onOpenChange: (open: boolean) => void;
 }
 
-export default function RecipeViewSheet({ recipe, open, onOpenChange }: Props) {
+const RecipeViewSheet = forwardRef<HTMLDivElement, Props>(function RecipeViewSheet({ recipe, open, onOpenChange }, ref) {
   if (!recipe) return null;
 
   const hasRecipeText = recipe.instructions && recipe.instructions.trim().length > 0;

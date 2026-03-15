@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { ChefHat } from 'lucide-react';
 
 interface Props {
   open: boolean;
@@ -111,9 +112,26 @@ export default function RecipeFormDialog({ open, onOpenChange, recipe }: Props) 
             <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Paneer Tikka" />
           </div>
           <div>
-            <Label>Description</Label>
-            <Textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} />
+            <Label>Short Description</Label>
+            <Textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder="One line about the dish..." />
           </div>
+
+          {/* Recipe text — prominent, first major section */}
+          <div className="bg-muted/30 rounded-xl p-4 space-y-2">
+            <div className="flex items-center gap-2">
+              <ChefHat className="h-4 w-4 text-primary" />
+              <Label className="text-sm font-semibold">Recipe / How to make</Label>
+            </div>
+            <Textarea
+              value={instructions}
+              onChange={e => setInstructions(e.target.value)}
+              rows={5}
+              placeholder={"Paste your recipe here — plain text is fine!\n\ne.g. Take a skillet, heat oil, add 1 tsp kalonji seeds..."}
+              className="bg-background"
+            />
+            <p className="text-[11px] text-muted-foreground">Family members will see this when they tap the dish name</p>
+          </div>
+
           <div>
             <Label className="mb-1 block">Meal Type</Label>
             <div className="flex flex-wrap gap-1.5">
@@ -183,10 +201,6 @@ export default function RecipeFormDialog({ open, onOpenChange, recipe }: Props) 
           <div>
             <Label>Ingredients (comma separated)</Label>
             <Textarea value={ingredients} onChange={e => setIngredients(e.target.value)} rows={2} />
-          </div>
-          <div>
-            <Label>Instructions</Label>
-            <Textarea value={instructions} onChange={e => setInstructions(e.target.value)} rows={3} />
           </div>
           <div>
             <Label>Tags (comma separated)</Label>

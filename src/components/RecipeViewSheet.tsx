@@ -64,4 +64,6 @@ const RecipeViewSheet = forwardRef<HTMLDivElement, Props>(function RecipeViewShe
       </DialogContent>
     </Dialog>
   );
-}
+});
+
+export default RecipeViewSheet;

@@ -17,15 +17,17 @@ const plannerNav = [
   { to: '/household', label: 'Settings', icon: Settings },
 ];
 
-const requestorNav = [
-  { to: '/planner', label: 'Calendar', icon: Calendar },
+const familyMemberNav = [
+  { to: '/', label: 'Home', icon: Home },
   { to: '/requests', label: 'Request', icon: MessageSquare },
+  { to: '/recipes', label: 'Recipes', icon: BookOpen },
+  { to: '/household', label: 'Settings', icon: Settings },
 ];
 
 export default function TopNav() {
   const { pathname } = useLocation();
   const { role } = useAuth();
-  const navItems = role === 'planner' ? plannerNav : requestorNav;
+  const navItems = role === 'planner' ? plannerNav : familyMemberNav;
 
   return (
     <header className="hidden md:block sticky top-0 z-50 bg-card/80 backdrop-blur-md border-b border-border">

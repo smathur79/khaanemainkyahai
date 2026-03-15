@@ -1,19 +1,27 @@
+import { useState, useEffect, useMemo } from 'react';
 import { useAppContext } from '@/context/AppContext';
+import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, BookOpen, Sparkles, ChefHat, Clock, Heart, Users, UtensilsCrossed } from 'lucide-react';
+import { Calendar, BookOpen, Sparkles, ChefHat, Clock, Heart, Users, UtensilsCrossed, Copy, Check, ClipboardList } from 'lucide-react';
 import { getMonday, formatWeekLabel, formatDateKey } from '@/lib/dateUtils';
-import { DAYS_OF_WEEK, DayOfWeek, PLANNER_MEAL_TYPES } from '@/types/models';
+import { DAYS_OF_WEEK, DayOfWeek, PLANNER_MEAL_TYPES, Recipe } from '@/types/models';
 import AppLayout from '@/components/AppLayout';
+import RecipeViewSheet from '@/components/RecipeViewSheet';
 import { motion } from 'framer-motion';
+import { toast } from 'sonner';
 
 const MEAL_EMOJI: Record<string, string> = { breakfast: '🍳', lunch: '🍚', snack: '🍪', dinner: '🍽️' };
 const MEAL_LABELS: Record<string, string> = { breakfast: 'Breakfast', lunch: 'Lunch', snack: 'Snack', dinner: 'Dinner' };
 
 export default function DashboardPage() {
   const { household, familyMembers, recipes, weeklyPlans, mealSlots } = useAppContext();
+  const { role, householdId } = useAuth();
+  const isPlanner = role === 'planner';
+
   const today = new Date();
   const monday = getMonday(today);
   const weekKey = formatDateKey(monday);
@@ -28,11 +36,193 @@ export default function DashboardPage() {
   const todayFormatted = today.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
   const todayMeals = PLANNER_MEAL_TYPES.map(meal => {
     const slot = todaySlots.find(s => s.mealType === meal);
-    const slotRecipes = slot ? slot.recipeIds.map(id => recipes.find(r => r.id === id)).filter(Boolean) as typeof recipes : [];
+    const slotRecipes = slot ? slot.recipeIds.map(id => recipes.find(r => r.id === id)).filter(Boolean) as Recipe[] : [];
     return { meal, slot, recipes: slotRecipes };
   });
   const hasTodayMeals = todayMeals.some(m => m.recipes.length > 0);
 
+  // Tomorrow for family member prep
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowDayIndex = (tomorrow.getDay() + 6) % 7;
+  const tomorrowDay: DayOfWeek = DAYS_OF_WEEK[tomorrowDayIndex];
+  const tomorrowFormatted = tomorrow.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+  const tomorrowSlots = currentSlots.filter(s => s.dayOfWeek === tomorrowDay);
+
+  // Recipe view sheet
+  const [viewRecipe, setViewRecipe] = useState<Recipe | null>(null);
+
+  // Rituals for family member prep
+  const [rituals, setRituals] = useState<{ title: string; ritual_type: string; items: { text: string }[] }[]>([]);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!householdId || isPlanner) return;
+    (async () => {
+      const { data: rData } = await supabase.from('ritual_templates').select('*').eq('household_id', householdId).eq('is_active', true);
+      if (!rData || rData.length === 0) return;
+      const ids = rData.map((r: any) => r.id);
+      const { data: iData } = await supabase.from('ritual_template_items').select('*').in('ritual_template_id', ids).order('sort_order');
+      setRituals(rData.map((r: any) => ({ title: r.title, ritual_type: r.ritual_type, items: (iData ?? []).filter((i: any) => i.ritual_template_id === r.id).map((i: any) => ({ text: i.text })) })));
+    })();
+  }, [householdId, isPlanner]);
+
+  // Prep WhatsApp message for family member
+  const prepMessage = useMemo(() => {
+    if (isPlanner) return '';
+    const lines: string[] = [`📋 *${tomorrowDay}'s Plan* (${tomorrowFormatted})`, ''];
+    const nightRituals = rituals.filter(r => r.ritual_type === 'night');
+    const morningRituals = rituals.filter(r => r.ritual_type === 'morning');
+    if (nightRituals.length > 0) { lines.push('🌙 *Night Prep*'); nightRituals.forEach(r => r.items.forEach(i => lines.push(`• ${i.text}`))); lines.push(''); }
+    if (morningRituals.length > 0) { lines.push('☀️ *Morning*'); morningRituals.forEach(r => r.items.forEach(i => lines.push(`• ${i.text}`))); lines.push(''); }
+    for (const meal of PLANNER_MEAL_TYPES) {
+      const slot = tomorrowSlots.find(s => s.mealType === meal);
+      const sr = slot ? slot.recipeIds.map(id => recipes.find(r => r.id === id)?.title).filter(Boolean) : [];
+      lines.push(`${MEAL_EMOJI[meal]} *${MEAL_LABELS[meal]}*`);
+      lines.push(sr.length > 0 ? sr.map(t => `• ${t}`).join('\n') : '• Not planned');
+      lines.push('');
+    }
+    return lines.join('\n');
+  }, [isPlanner, tomorrowSlots, recipes, rituals, tomorrowDay, tomorrowFormatted]);
+
+  // Tappable dish component
+  const DishItem = ({ recipe }: { recipe: Recipe }) => (
+    <button
+      onClick={() => setViewRecipe(recipe)}
+      className="w-full flex items-center justify-between bg-muted/60 rounded-lg px-3 py-2 hover:bg-muted transition-colors text-left"
+    >
+      <span className="text-sm font-medium">{recipe.title}</span>
+      <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">{recipe.prepTimeMinutes}m</span>
+    </button>
+  );
+
+  // ════════════════════════════════════════════════════════════════════
+  // FAMILY MEMBER DASHBOARD — simplified
+  // ════════════════════════════════════════════════════════════════════
+  if (!isPlanner) {
+    return (
+      <AppLayout>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-lg mx-auto">
+          <div>
+            <h1 className="text-2xl font-bold">{household?.name || 'Home'}</h1>
+            <p className="text-muted-foreground mt-1">{formatWeekLabel(monday)}</p>
+          </div>
+
+          {/* Today's Menu — tappable dishes */}
+          <Card className="card-warm p-5 border-primary/20">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+                <UtensilsCrossed className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold">Today's Menu</h2>
+                <p className="text-xs text-muted-foreground">{todayFormatted}</p>
+              </div>
+            </div>
+            {hasTodayMeals ? (
+              <div className="space-y-3">
+                {todayMeals.map(({ meal, recipes: mealRecipes }) => (
+                  <div key={meal} className="flex items-start gap-3">
+                    <div className="mt-0.5 text-lg flex-shrink-0 w-8 text-center">{MEAL_EMOJI[meal]}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">{MEAL_LABELS[meal]}</div>
+                      {mealRecipes.length > 0 ? (
+                        <div className="space-y-1">{mealRecipes.map(r => <DishItem key={r.id} recipe={r} />)}</div>
+                      ) : <p className="text-sm text-muted-foreground italic">Nothing planned</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">No meals planned for today</p>
+            )}
+          </Card>
+
+          {/* Tomorrow's Prep — inline */}
+          <Card className="card-warm p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <ClipboardList className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-semibold">Tomorrow</h2>
+              <span className="text-xs text-muted-foreground ml-auto">{tomorrowDay}</span>
+            </div>
+            <div className="space-y-2 mb-3">
+              {PLANNER_MEAL_TYPES.map(meal => {
+                const slot = tomorrowSlots.find(s => s.mealType === meal);
+                const sr = slot ? slot.recipeIds.map(id => recipes.find(r => r.id === id)).filter(Boolean) as Recipe[] : [];
+                if (sr.length === 0) return null;
+                return (
+                  <div key={meal} className="flex items-center gap-2 text-sm">
+                    <span className="text-muted-foreground">{MEAL_EMOJI[meal]}</span>
+                    <span>{sr.map(r => r.title).join(', ')}</span>
+                  </div>
+                );
+              })}
+              {tomorrowSlots.every(s => s.recipeIds.length === 0) && (
+                <p className="text-sm text-muted-foreground italic">Nothing planned yet</p>
+              )}
+            </div>
+            {prepMessage && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => { navigator.clipboard.writeText(prepMessage); setCopied(true); toast.success('Copied!'); setTimeout(() => setCopied(false), 2000); }}
+              >
+                {copied ? <Check className="mr-1 h-4 w-4" /> : <Copy className="mr-1 h-4 w-4" />}
+                {copied ? 'Copied!' : 'Copy prep for WhatsApp'}
+              </Button>
+            )}
+          </Card>
+
+          {/* This Week — read-only compact view */}
+          <Card className="card-warm p-5">
+            <h2 className="text-lg font-semibold mb-3">This Week</h2>
+            {currentPlan ? (
+              <div className="space-y-3">
+                {DAYS_OF_WEEK.map(day => {
+                  const daySlots = currentSlots.filter(s => s.dayOfWeek === day);
+                  const hasMeals = daySlots.some(s => s.recipeIds.length > 0);
+                  if (!hasMeals) return null;
+                  const isToday = day === todayDay;
+                  return (
+                    <div key={day} className={`${isToday ? 'bg-primary/5 rounded-lg p-2 -mx-2' : ''}`}>
+                      <div className="font-semibold text-sm mb-1">{day} {isToday && <span className="text-xs text-primary font-normal">· today</span>}</div>
+                      <div className="space-y-0.5 ml-2">
+                        {PLANNER_MEAL_TYPES.map(meal => {
+                          const slot = daySlots.find(s => s.mealType === meal);
+                          if (!slot || slot.recipeIds.length === 0) return null;
+                          const slotRecipes = slot.recipeIds.map(id => recipes.find(r => r.id === id)).filter(Boolean) as Recipe[];
+                          return (
+                            <div key={meal} className="text-sm flex items-center gap-1">
+                              <span className="text-muted-foreground">{MEAL_EMOJI[meal]}</span>
+                              {slotRecipes.map((r, i) => (
+                                <span key={r.id}>
+                                  <button onClick={() => setViewRecipe(r)} className="hover:text-primary hover:underline transition-colors">{r.title}</button>
+                                  {i < slotRecipes.length - 1 && <span className="text-muted-foreground">, </span>}
+                                </span>
+                              ))}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">No plan this week yet</p>
+            )}
+          </Card>
+
+          <RecipeViewSheet recipe={viewRecipe} open={!!viewRecipe} onOpenChange={() => setViewRecipe(null)} />
+        </motion.div>
+      </AppLayout>
+    );
+  }
+
+  // ════════════════════════════════════════════════════════════════════
+  // PLANNER DASHBOARD — full view with tap-to-view
+  // ════════════════════════════════════════════════════════════════════
   return (
     <AppLayout>
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
@@ -41,7 +231,7 @@ export default function DashboardPage() {
           <p className="text-muted-foreground mt-1">{formatWeekLabel(monday)}</p>
         </div>
 
-        {/* Today's Meals */}
+        {/* Today's Meals — tappable */}
         <Card className="card-warm p-5 border-primary/20">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -57,18 +247,13 @@ export default function DashboardPage() {
           </div>
           {hasTodayMeals ? (
             <div className="space-y-3">
-              {todayMeals.map(({ meal, slot, recipes: mealRecipes }) => (
+              {todayMeals.map(({ meal, recipes: mealRecipes }) => (
                 <div key={meal} className="flex items-start gap-3">
                   <div className="mt-0.5 text-lg flex-shrink-0 w-8 text-center">{MEAL_EMOJI[meal]}</div>
                   <div className="flex-1 min-w-0">
                     <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">{MEAL_LABELS[meal]}</div>
                     {mealRecipes.length > 0 ? (
-                      <div className="space-y-1">{mealRecipes.map(r => (
-                        <div key={r.id} className="flex items-center justify-between bg-muted/60 rounded-lg px-3 py-2">
-                          <span className="text-sm font-medium">{r.title}</span>
-                          <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">{r.prepTimeMinutes}m</span>
-                        </div>
-                      ))}</div>
+                      <div className="space-y-1">{mealRecipes.map(r => <DishItem key={r.id} recipe={r} />)}</div>
                     ) : <p className="text-sm text-muted-foreground italic">Nothing planned</p>}
                   </div>
                 </div>
@@ -97,7 +282,7 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {/* This Week — no finalize badge */}
+        {/* This Week */}
         <Card className="card-warm p-5">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold">This Week</h2>
@@ -146,6 +331,8 @@ export default function DashboardPage() {
             ) : <p className="text-sm text-muted-foreground">No favorites yet</p>}
           </Card>
         </div>
+
+        <RecipeViewSheet recipe={viewRecipe} open={!!viewRecipe} onOpenChange={() => setViewRecipe(null)} />
       </motion.div>
     </AppLayout>
   );

@@ -50,7 +50,7 @@ export default function WeeklyPlannerPage() {
     recipes, familyMembers, weeklyPlans, mealSlots,
     createWeeklyPlan, getWeeklyPlan, getMealSlots,
     setMealSlot, addRecipeToSlot, removeRecipeFromSlot, reorderRecipeInSlot,
-    finalizePlan, swipeDecisions, household, clearWeek, copyLastWeek, addRecipe,
+    finalizePlan, swipeDecisions, household, clearWeek, copyLastWeek, addRecipe, refreshData,
   } = useAppContext();
   const { householdId } = useAuth();
 
@@ -151,7 +151,10 @@ export default function WeeklyPlannerPage() {
       highProtein: false,
     });
     if (newId) {
+      // addRecipe already calls refreshData, so slots should be current
       await ensurePlan();
+      // Small delay to let React state settle after refreshData
+      await new Promise(resolve => setTimeout(resolve, 100));
       const p = getWeeklyPlan(weekKey);
       if (p) await addRecipeToSlot(p.id, day, meal, newId);
     }
@@ -264,79 +267,101 @@ export default function WeeklyPlannerPage() {
     setBulkImporting(true);
     try {
       await ensurePlan();
+      // Re-fetch plan after ensure
+      await refreshData();
       const p = getWeeklyPlan(weekKey);
       if (!p) throw new Error('No plan');
 
       const lines = bulkText.split('\n').map(l => l.trim()).filter(Boolean);
+
+      // Phase 1: Parse all lines into a structured plan
+      type SlotEntry = { day: DayOfWeek; meal: MealType; dishes: string[] };
+      const slotEntries: SlotEntry[] = [];
       let currentDay: DayOfWeek | null = null;
 
       for (const line of lines) {
-        // Check if line is a day name
         const dayMatch = DAYS_OF_WEEK.find(d => line.toLowerCase().startsWith(d.toLowerCase()));
-        if (dayMatch) {
-          currentDay = dayMatch;
-          continue;
-        }
-
+        if (dayMatch) { currentDay = dayMatch; continue; }
         if (!currentDay) continue;
-
-        // Parse meal line like "B: Poha, Chai" or "L: Dal tadka, Rice"
         const mealMatch = line.match(/^([BLSD]):\s*(.+)$/i);
         if (!mealMatch) continue;
-
-        const mealKey = mealMatch[1].toUpperCase();
-        const mealType = MEAL_KEY_MAP[mealKey];
+        const mealType = MEAL_KEY_MAP[mealMatch[1].toUpperCase()];
         if (!mealType) continue;
-
-        const dishes = mealMatch[2].split(',').map(d => d.trim()).filter(Boolean);
-
-        // Find or create recipes for each dish
-        const recipeIds: string[] = [];
-        for (let dishName of dishes) {
-          // Check for entry type hints
-          const isOrderIn = /\(order\s*in\)/i.test(dishName);
-          const isEatOut = /\(eat\s*out\)/i.test(dishName);
-          dishName = dishName.replace(/\(order\s*in\)/i, '').replace(/\(eat\s*out\)/i, '').trim();
-
-          if (!dishName) continue;
-
-          // Try to find existing recipe (case-insensitive)
-          const existing = recipes.find(r => r.title.toLowerCase() === dishName.toLowerCase());
-          if (existing) {
-            recipeIds.push(existing.id);
-          } else {
-            // Create new recipe
-            const newId = await addRecipe({
-              title: dishName,
-              description: '',
-              mealTypes: [mealType],
-              cuisine: 'Other',
-              subCuisine: '',
-              foodType: 'vegetarian',
-              healthTag: 'balanced',
-              effort: 'quick',
-              moodTag: 'comfort',
-              prepTimeMinutes: 20,
-              difficulty: 'Easy',
-              ingredients: [],
-              instructions: '',
-              tags: ['bulk-import'],
-              favorite: false,
-              source: 'manual',
-              sourceName: 'Bulk import',
-              sourceLink: '',
-              isLinkOnly: false,
-              kidFriendly: false,
-              highProtein: false,
-            });
-            if (newId) recipeIds.push(newId);
-          }
-        }
-
-        if (recipeIds.length > 0) {
-          await setMealSlot(p.id, currentDay, mealType, recipeIds);
-        }
+        const dishes = mealMatch[2].split(',').map(d => d.replace(/\(order\s*in\)/i, '').replace(/\(eat\s*out\)/i, '').trim()).filter(Boolean);
+        if (dishes.length > 0) slotEntries.push({ day: currentDay, meal: mealType, dishes });
       }
+
+      // Phase 2: Collect all unique dish names that need new recipes
+      const allDishNames = [...new Set(slotEntries.flatMap(e => e.dishes))];
+      const existingMap = new Map<string, string>(); // lowercase name → id
+      recipes.forEach(r => existingMap.set(r.title.toLowerCase(), r.id));
+
+      const newDishNames = allDishNames.filter(d => !existingMap.has(d.toLowerCase()));
+
+      // Phase 3: Create all missing recipes in batch (via individual inserts, but no refreshData between them)
+      if (newDishNames.length > 0 && householdId) {
+        const newRows = newDishNames.map(dishName => ({
+          household_id: householdId,
+          title: dishName,
+          description: '',
+          meal_types: ['lunch'] as any,
+          cuisine: 'Other',
+          sub_cuisine: '',
+          food_type: 'vegetarian' as any,
+          health_tag: 'balanced' as any,
+          effort: 'quick' as any,
+          mood_tag: 'comfort',
+          prep_time_minutes: 20,
+          difficulty: 'Easy' as any,
+          ingredients: [] as string[],
+          instructions: '',
+          tags: ['bulk-import'],
+          favorite: false,
+          source: 'manual',
+          source_name: 'Bulk import',
+          source_link: '',
+          is_link_only: false,
+          kid_friendly: false,
+          high_protein: false,
+        }));
+
+        // Insert in chunks of 20
+        for (let i = 0; i < newRows.length; i += 20) {
+          await supabase.from('recipes').insert(newRows.slice(i, i + 20));
+        }
+
+        // Refresh once to get all new recipe IDs
+        await refreshData();
+      }
+
+      // Phase 4: Build recipe ID lookup from latest state (after refresh)
+      // We need to re-query because state may not have updated yet
+      const { data: allRecipes } = await supabase.from('recipes').select('id, title').eq('household_id', householdId);
+      const idLookup = new Map<string, string>();
+      (allRecipes ?? []).forEach((r: any) => idLookup.set(r.title.toLowerCase(), r.id));
+
+      // Phase 5: Set all meal slots
+      const freshSlots = getMealSlots(p.id);
+      for (const entry of slotEntries) {
+        const recipeIds = entry.dishes.map(d => idLookup.get(d.toLowerCase())).filter(Boolean) as string[];
+        if (recipeIds.length === 0) continue;
+
+        const slot = freshSlots.find(s => s.dayOfWeek === entry.day && s.mealType === entry.meal);
+        if (!slot) continue;
+
+        // Delete existing items and insert new ones directly
+        await supabase.from('weekly_meal_slot_items').delete().eq('weekly_meal_slot_id', slot.id);
+        const items = recipeIds.map((rid, idx) => ({
+          weekly_meal_slot_id: slot.id,
+          recipe_id: rid,
+          title: [...(allRecipes ?? [])].find((r: any) => r.id === rid)?.title ?? '',
+          sort_order: idx,
+        }));
+        await supabase.from('weekly_meal_slot_items').insert(items);
+      }
+
+      // Phase 6: Single final refresh
+      await refreshData();
 
       toast.success('Week imported!');
       setBulkOpen(false);

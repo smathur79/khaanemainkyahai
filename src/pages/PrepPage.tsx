@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { ClipboardList, Sun, Moon, ChefHat, Copy, Check, Sunrise, Cookie } from 'lucide-react';
+import { ClipboardList, Sun, Moon, ChefHat, Copy, Check, Sunrise, Cookie, CalendarPlus } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
@@ -175,6 +175,27 @@ export default function PrepPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleAddToCalendar = () => {
+    const start = new Date();
+    start.setHours(21, 0, 0, 0);
+    const end = new Date(start);
+    end.setMinutes(end.getMinutes() + 30);
+
+    const formatLocalCalendarDate = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+      return `${year}${month}${day}T${hours}${minutes}${seconds}`;
+    };
+
+    const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`🍽️ Meal Prep — ${tomorrowDay} (${tomorrowFormatted})`)}&dates=${formatLocalCalendarDate(start)}/${formatLocalCalendarDate(end)}&details=${encodeURIComponent(whatsappMessage.replace(/\*/g, ''))}&add=${encodeURIComponent('shweta.mathur.82@gmail.com')}`;
+    window.open(url, '_blank');
+    toast.success('Opening Google Calendar…');
+  };
+
   return (
     <AppLayout>
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-2xl mx-auto">
@@ -295,6 +316,11 @@ export default function PrepPage() {
             <Button onClick={handleCopy} className="w-full" size="lg">
               {copied ? <Check className="mr-2 h-5 w-5" /> : <Copy className="mr-2 h-5 w-5" />}
               {copied ? 'Copied!' : 'Copy for WhatsApp'}
+            </Button>
+
+            <Button onClick={handleAddToCalendar} variant="outline" className="w-full" size="lg">
+              <CalendarPlus className="mr-2 h-5 w-5" />
+              Add to Google Calendar
             </Button>
 
             {/* Preview */}

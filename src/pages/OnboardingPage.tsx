@@ -94,6 +94,9 @@ export default function OnboardingPage() {
           spiceLevel: m.spiceLevel,
           preferredCuisines: m.preferredCuisines,
           notes: m.notes,
+          calendarRole: 'unassigned',
+          calendarEmail: '',
+          receivesPrepSync: false,
         });
       }
       navigate('/');

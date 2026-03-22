@@ -68,7 +68,7 @@ Return ONLY a JSON array (no markdown, no backticks) with objects having these e
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message, recipes: [] }), {
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : String(error), recipes: [] }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

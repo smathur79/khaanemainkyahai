@@ -9,6 +9,7 @@ export type SwipeDecisionType = 'liked' | 'skipped';
 export type DayOfWeek = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
 export type EntryType = 'cooked' | 'order_in' | 'leftovers' | 'eat_out';
 export type HouseholdRole = 'planner' | 'requestor_viewer';
+export type FamilyCalendarRole = 'unassigned' | 'kid_1' | 'kid_2' | 'parent_1' | 'parent_2';
 
 // Recipe-specific classification types
 export type RecipeFoodType = 'vegan' | 'vegetarian' | 'egg' | 'chicken' | 'fish';
@@ -50,6 +51,9 @@ export interface FamilyMember {
   spiceLevel: SpiceLevel;
   preferredCuisines: string[];
   notes: string;
+  calendarRole: FamilyCalendarRole;
+  calendarEmail: string;
+  receivesPrepSync: boolean;
 }
 
 export interface Recipe {

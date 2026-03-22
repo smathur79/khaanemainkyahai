@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useAppContext } from '@/context/AppContext';
-import { FamilyMember, FoodType, SpiceLevel, MemberLabel, FOOD_TYPES, CUISINES } from '@/types/models';
+import { FamilyMember, FoodType, SpiceLevel, MemberLabel, FOOD_TYPES, CUISINES, FamilyCalendarRole } from '@/types/models';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,21 +9,45 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Copy, RefreshCw, Users, LogOut, Shield, Eye, Plus, Pencil, Trash2, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Copy, RefreshCw, Users, LogOut, Shield, Eye, Plus, Pencil, Trash2, Loader2, ChevronDown, ChevronUp, Calendar } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 
 const LABELS: MemberLabel[] = ['Parent', 'Kid', 'Other'];
 const SPICE_LEVELS: SpiceLevel[] = ['Low', 'Medium', 'High'];
+const CALENDAR_ROLES: { value: FamilyCalendarRole; label: string }[] = [
+  { value: 'unassigned', label: 'Unassigned' },
+  { value: 'kid_1', label: 'Kid 1' },
+  { value: 'kid_2', label: 'Kid 2' },
+  { value: 'parent_1', label: 'Parent 1' },
+  { value: 'parent_2', label: 'Parent 2' },
+];
 
 interface MemberFormData {
   name: string; label: MemberLabel; foodType: FoodType; likes: string; dislikes: string;
   exclusions: string; spiceLevel: SpiceLevel; preferredCuisines: string[]; notes: string;
+  calendarRole: FamilyCalendarRole; calendarEmail: string; receivesPrepSync: boolean;
 }
-const emptyForm: MemberFormData = { name: '', label: 'Parent', foodType: 'Non-Vegetarian', likes: '', dislikes: '', exclusions: '', spiceLevel: 'Medium', preferredCuisines: [], notes: '' };
+const emptyForm: MemberFormData = {
+  name: '', label: 'Parent', foodType: 'Non-Vegetarian', likes: '', dislikes: '', exclusions: '',
+  spiceLevel: 'Medium', preferredCuisines: [], notes: '', calendarRole: 'unassigned', calendarEmail: '', receivesPrepSync: false
+};
 function memberToForm(m: FamilyMember): MemberFormData {
-  return { name: m.name, label: m.label, foodType: m.foodType, likes: m.likes.join(', '), dislikes: m.dislikes.join(', '), exclusions: m.exclusions.join(', '), spiceLevel: m.spiceLevel, preferredCuisines: m.preferredCuisines, notes: m.notes };
+  return {
+    name: m.name,
+    label: m.label,
+    foodType: m.foodType,
+    likes: m.likes.join(', '),
+    dislikes: m.dislikes.join(', '),
+    exclusions: m.exclusions.join(', '),
+    spiceLevel: m.spiceLevel,
+    preferredCuisines: m.preferredCuisines,
+    notes: m.notes,
+    calendarRole: m.calendarRole,
+    calendarEmail: m.calendarEmail,
+    receivesPrepSync: m.receivesPrepSync,
+  };
 }
 
 export default function HouseholdPage() {
@@ -49,7 +73,20 @@ export default function HouseholdPage() {
     if (!form.name.trim()) { toast.error('Please enter a name'); return; }
     setSaving(true);
     try {
-      const data = { name: form.name.trim(), label: form.label, foodType: form.foodType, likes: form.likes.split(',').map(s => s.trim()).filter(Boolean), dislikes: form.dislikes.split(',').map(s => s.trim()).filter(Boolean), exclusions: form.exclusions.split(',').map(s => s.trim()).filter(Boolean), spiceLevel: form.spiceLevel, preferredCuisines: form.preferredCuisines, notes: form.notes };
+      const data = {
+        name: form.name.trim(),
+        label: form.label,
+        foodType: form.foodType,
+        likes: form.likes.split(',').map(s => s.trim()).filter(Boolean),
+        dislikes: form.dislikes.split(',').map(s => s.trim()).filter(Boolean),
+        exclusions: form.exclusions.split(',').map(s => s.trim()).filter(Boolean),
+        spiceLevel: form.spiceLevel,
+        preferredCuisines: form.preferredCuisines,
+        notes: form.notes,
+        calendarRole: form.calendarRole,
+        calendarEmail: form.calendarEmail.trim(),
+        receivesPrepSync: form.receivesPrepSync,
+      };
       if (editingMemberId) { await updateFamilyMember(editingMemberId, data); toast.success(`${form.name} updated!`); }
       else { await addFamilyMember(data); toast.success(`${form.name} added!`); }
       setShowMemberForm(false);
@@ -99,6 +136,20 @@ export default function HouseholdPage() {
           )}
         </Card>
 
+        <Card className="card-warm p-6">
+          <div className="flex items-center gap-3 mb-3">
+            <Calendar className="h-5 w-5 text-primary" />
+            <div>
+              <h3 className="font-semibold text-lg">Calendar Sync Setup</h3>
+              <p className="text-sm text-muted-foreground">Assign each family member to a planner role and add the email used for calendar sharing.</p>
+            </div>
+          </div>
+          <div className="space-y-2 text-sm text-muted-foreground">
+            <p>Parents marked for prep sync will receive the shared prep activities when the weekly calendar sync is built.</p>
+            <p>Recommended mapping: Kid 1, Kid 2, Parent 1, Parent 2.</p>
+          </div>
+        </Card>
+
         {/* Family Members */}
         <Card className="card-warm p-6">
           <div className="flex items-center justify-between mb-4">
@@ -129,6 +180,9 @@ export default function HouseholdPage() {
                           <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 pt-2 text-xs">
                             <div><span className="text-muted-foreground">Spice:</span> <span className="font-medium">{m.spiceLevel}</span></div>
                             <div><span className="text-muted-foreground">Type:</span> <span className="font-medium">{m.foodType}</span></div>
+                            <div><span className="text-muted-foreground">Calendar role:</span> <span className="font-medium">{CALENDAR_ROLES.find(role => role.value === m.calendarRole)?.label ?? 'Unassigned'}</span></div>
+                            <div><span className="text-muted-foreground">Prep sync:</span> <span className="font-medium">{m.receivesPrepSync ? 'Yes' : 'No'}</span></div>
+                            {m.calendarEmail && <div className="col-span-2"><span className="text-muted-foreground">Calendar email:</span> {m.calendarEmail}</div>}
                             {m.likes.length > 0 && <div className="col-span-2"><span className="text-muted-foreground">Likes:</span> {m.likes.join(', ')}</div>}
                             {m.dislikes.length > 0 && <div className="col-span-2"><span className="text-muted-foreground">Dislikes:</span> {m.dislikes.join(', ')}</div>}
                             {m.exclusions.length > 0 && <div className="col-span-2"><span className="text-muted-foreground">Allergies:</span> <span className="text-destructive">{m.exclusions.join(', ')}</span></div>}
@@ -168,6 +222,19 @@ export default function HouseholdPage() {
             <div><Label className="text-xs">Dislikes</Label><Input placeholder="e.g. bitter gourd" value={form.dislikes} onChange={e => setForm(p => ({ ...p, dislikes: e.target.value }))} /></div>
             <div><Label className="text-xs">Allergies / Exclusions</Label><Input placeholder="e.g. peanuts" value={form.exclusions} onChange={e => setForm(p => ({ ...p, exclusions: e.target.value }))} /></div>
             <div><Label className="text-xs mb-1 block">Preferred Cuisines</Label><div className="flex flex-wrap gap-1.5">{CUISINES.map(c => <Badge key={c} variant={form.preferredCuisines.includes(c) ? 'default' : 'outline'} className="cursor-pointer text-xs" onClick={() => toggleCuisine(c)}>{c}</Badge>)}</div></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label className="text-xs">Calendar Role</Label><Select value={form.calendarRole} onValueChange={v => setForm(p => ({ ...p, calendarRole: v as FamilyCalendarRole }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{CALENDAR_ROLES.map(role => <SelectItem key={role.value} value={role.value}>{role.label}</SelectItem>)}</SelectContent></Select></div>
+              <div><Label className="text-xs">Calendar Email</Label><Input placeholder="name@example.com" value={form.calendarEmail} onChange={e => setForm(p => ({ ...p, calendarEmail: e.target.value }))} /></div>
+            </div>
+            <div className="rounded-lg border p-3">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input type="checkbox" checked={form.receivesPrepSync} onChange={e => setForm(p => ({ ...p, receivesPrepSync: e.target.checked }))} className="mt-1" />
+                <div>
+                  <div className="text-sm font-medium">Receive prep sync</div>
+                  <div className="text-xs text-muted-foreground">Turn this on for Parent 1 and Parent 2 so both get prep activities during calendar sync.</div>
+                </div>
+              </label>
+            </div>
             <div><Label className="text-xs">Notes</Label><Input placeholder="Any notes" value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} /></div>
             <Button onClick={handleSaveMember} className="w-full" disabled={!form.name.trim() || saving}>
               {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : editingMemberId ? 'Update Member' : 'Add Member'}

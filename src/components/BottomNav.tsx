@@ -10,11 +10,12 @@ import { AnimatePresence, motion } from 'framer-motion';
 const plannerPrimaryNav = [
   { to: '/', label: 'Home', icon: Home },
   { to: '/planner', label: 'Planner', icon: Calendar },
+  { to: '/calendar-planner', label: 'Calendar', icon: Calendar },
   { to: '/shortlist', label: 'Discover', icon: ChefHat },
-  { to: '/generate', label: 'AI Chef', icon: Sparkles },
 ];
 
 const plannerMoreNav = [
+  { to: '/generate', label: 'AI Chef', icon: Sparkles },
   { to: '/recipes', label: 'Recipes', icon: BookOpen },
   { to: '/cook-now', label: 'Cook Now', icon: Flame },
   { to: '/prep', label: 'Prep', icon: ClipboardList },

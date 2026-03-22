@@ -16,6 +16,8 @@ export type Database = {
     Tables: {
       family_members: {
         Row: {
+          calendar_email: string
+          calendar_role: string
           created_at: string
           dislikes: string[]
           exclusions: string[]
@@ -27,9 +29,12 @@ export type Database = {
           name: string
           notes: string
           preferred_cuisines: string[]
+          receives_prep_sync: boolean
           spice_level: Database["public"]["Enums"]["spice_level"]
         }
         Insert: {
+          calendar_email?: string
+          calendar_role?: string
           created_at?: string
           dislikes?: string[]
           exclusions?: string[]
@@ -41,9 +46,12 @@ export type Database = {
           name: string
           notes?: string
           preferred_cuisines?: string[]
+          receives_prep_sync?: boolean
           spice_level?: Database["public"]["Enums"]["spice_level"]
         }
         Update: {
+          calendar_email?: string
+          calendar_role?: string
           created_at?: string
           dislikes?: string[]
           exclusions?: string[]
@@ -55,6 +63,7 @@ export type Database = {
           name?: string
           notes?: string
           preferred_cuisines?: string[]
+          receives_prep_sync?: boolean
           spice_level?: Database["public"]["Enums"]["spice_level"]
         }
         Relationships: [

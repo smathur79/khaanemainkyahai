@@ -52,6 +52,9 @@ function toFamilyMember(m: any): FamilyMember {
     spiceLevel: m.spice_level,
     preferredCuisines: m.preferred_cuisines ?? [],
     notes: m.notes,
+    calendarRole: (m.calendar_role ?? 'unassigned') as any,
+    calendarEmail: m.calendar_email ?? '',
+    receivesPrepSync: m.receives_prep_sync ?? false,
   };
 }
 
@@ -253,6 +256,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       spice_level: member.spiceLevel as any,
       preferred_cuisines: member.preferredCuisines,
       notes: member.notes,
+      calendar_role: member.calendarRole,
+      calendar_email: member.calendarEmail,
+      receives_prep_sync: member.receivesPrepSync,
     });
     await refreshData();
   }, [householdId, refreshData]);
@@ -268,6 +274,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (updates.spiceLevel !== undefined) dbUpdates.spice_level = updates.spiceLevel;
     if (updates.preferredCuisines !== undefined) dbUpdates.preferred_cuisines = updates.preferredCuisines;
     if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
+    if (updates.calendarRole !== undefined) dbUpdates.calendar_role = updates.calendarRole;
+    if (updates.calendarEmail !== undefined) dbUpdates.calendar_email = updates.calendarEmail;
+    if (updates.receivesPrepSync !== undefined) dbUpdates.receives_prep_sync = updates.receivesPrepSync;
     await supabase.from('family_members').update(dbUpdates).eq('id', id);
     await refreshData();
   }, [refreshData]);

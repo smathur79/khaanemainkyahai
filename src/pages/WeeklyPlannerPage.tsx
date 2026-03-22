@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ChevronLeft, ChevronRight, Check, X, Copy, Wand2, Download, Plus, Trash2, CopyCheck, ClipboardPaste } from 'lucide-react';
 import { generateWeeklyPlanPdf } from '@/lib/generatePlanPdf';
+import { parseWeeklyMenuText } from '@/lib/weeklyMenuImport';
 import AppLayout from '@/components/AppLayout';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
@@ -30,13 +31,6 @@ const MEAL_LABELS: Record<string, string> = {
   lunch: 'Lunch',
   snack: 'Snack',
   dinner: 'Dinner',
-};
-
-const MEAL_KEY_MAP: Record<string, MealType> = {
-  'B': 'breakfast',
-  'L': 'lunch',
-  'S': 'snack',
-  'D': 'dinner',
 };
 
 interface RitualForPdf {
@@ -266,29 +260,12 @@ export default function WeeklyPlannerPage() {
     if (!bulkText.trim()) return;
     setBulkImporting(true);
     try {
-      await ensurePlan();
-      // Re-fetch plan after ensure
-      await refreshData();
-      const p = getWeeklyPlan(weekKey);
-      if (!p) throw new Error('No plan');
+      const planId = await createWeeklyPlan(weekKey);
+      if (!planId) throw new Error('No plan');
 
-      const lines = bulkText.split('\n').map(l => l.trim()).filter(Boolean);
-
-      // Phase 1: Parse all lines into a structured plan
-      type SlotEntry = { day: DayOfWeek; meal: MealType; dishes: string[] };
-      const slotEntries: SlotEntry[] = [];
-      let currentDay: DayOfWeek | null = null;
-
-      for (const line of lines) {
-        const dayMatch = DAYS_OF_WEEK.find(d => line.toLowerCase().startsWith(d.toLowerCase()));
-        if (dayMatch) { currentDay = dayMatch; continue; }
-        if (!currentDay) continue;
-        const mealMatch = line.match(/^([BLSD]):\s*(.+)$/i);
-        if (!mealMatch) continue;
-        const mealType = MEAL_KEY_MAP[mealMatch[1].toUpperCase()];
-        if (!mealType) continue;
-        const dishes = mealMatch[2].split(',').map(d => d.replace(/\(order\s*in\)/i, '').replace(/\(eat\s*out\)/i, '').trim()).filter(Boolean);
-        if (dishes.length > 0) slotEntries.push({ day: currentDay, meal: mealType, dishes });
+      const slotEntries = parseWeeklyMenuText(bulkText);
+      if (slotEntries.length === 0) {
+        throw new Error('Could not parse the pasted menu. Use day headers plus lines like "B: Poha" or "Breakfast: Poha".');
       }
 
       // Phase 2: Collect all unique dish names that need new recipes
@@ -341,12 +318,18 @@ export default function WeeklyPlannerPage() {
       (allRecipes ?? []).forEach((r: any) => idLookup.set(r.title.toLowerCase(), r.id));
 
       // Phase 5: Set all meal slots
-      const freshSlots = getMealSlots(p.id);
+      const { data: freshSlots, error: slotsError } = await supabase
+        .from('weekly_meal_slots')
+        .select('id, day_of_week, meal_type')
+        .eq('weekly_plan_id', planId);
+
+      if (slotsError) throw slotsError;
+
       for (const entry of slotEntries) {
         const recipeIds = entry.dishes.map(d => idLookup.get(d.toLowerCase())).filter(Boolean) as string[];
         if (recipeIds.length === 0) continue;
 
-        const slot = freshSlots.find(s => s.dayOfWeek === entry.day && s.mealType === entry.meal);
+        const slot = (freshSlots ?? []).find((s: any) => s.day_of_week === entry.day && s.meal_type === entry.meal);
         if (!slot) continue;
 
         // Delete existing items and insert new ones directly

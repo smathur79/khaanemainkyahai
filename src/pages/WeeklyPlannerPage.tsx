@@ -317,13 +317,20 @@ export default function WeeklyPlannerPage() {
       const idLookup = new Map<string, string>();
       (allRecipes ?? []).forEach((r: any) => idLookup.set(r.title.toLowerCase(), r.id));
 
-      // Phase 5: Set all meal slots
-      const { data: freshSlots, error: slotsError } = await supabase
-        .from('weekly_meal_slots')
-        .select('id, day_of_week, meal_type')
-        .eq('weekly_plan_id', planId);
+      // Phase 5: Set all meal slots — retry briefly if slots not yet visible
+      let freshSlots: any[] = [];
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const { data: slotsData, error: slotsError } = await supabase
+          .from('weekly_meal_slots')
+          .select('id, day_of_week, meal_type')
+          .eq('weekly_plan_id', planId);
 
-      if (slotsError) throw slotsError;
+        if (slotsError) throw slotsError;
+        if (slotsData && slotsData.length > 0) { freshSlots = slotsData; break; }
+        await new Promise(res => setTimeout(res, 200));
+      }
+
+      if (freshSlots.length === 0) throw new Error('Could not load meal slots after plan creation.');
 
       for (const entry of slotEntries) {
         const recipeIds = entry.dishes.map(d => idLookup.get(d.toLowerCase())).filter(Boolean) as string[];

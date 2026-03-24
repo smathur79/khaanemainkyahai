@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CalendarDays, CalendarRange, GraduationCap, PartyPopper, School, Sparkles, Users } from 'lucide-react';
 
 import AppLayout from '@/components/AppLayout';
@@ -7,6 +8,7 @@ import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { motion } from 'framer-motion';
+import { useAppContext } from '@/context/AppContext';
 
 const GROUP_OPTIONS = ['Meals', 'Activities', 'Other'] as const;
 const ACTIVITY_CATEGORIES = [
@@ -16,6 +18,8 @@ const ACTIVITY_CATEGORIES = [
 ] as const;
 
 export default function CalendarPlannerPage() {
+  const navigate = useNavigate();
+  const { familyMembers } = useAppContext();
   const [calendarText, setCalendarText] = useState('');
   const [selectedGroups, setSelectedGroups] = useState<string[]>([...GROUP_OPTIONS]);
 
@@ -80,7 +84,7 @@ Math exam - Kid 2
                 ))}
               </div>
             </div>
-            <Button size="lg" className="w-full">Continue to Week Organizer</Button>
+            <Button size="lg" className="w-full" onClick={() => navigate('/planner')}>Continue to Week Organizer</Button>
           </Card>
 
           <div className="space-y-4">
@@ -91,7 +95,11 @@ Math exam - Kid 2
               </div>
               <div className="space-y-2 text-sm text-muted-foreground">
                 <p>Each weekly sync will route activities to:</p>
-                <p>Kid 1, Kid 2, Parent 1, Parent 2</p>
+                <p>
+                  {familyMembers.length > 0
+                    ? familyMembers.map(m => m.name).join(', ')
+                    : 'No family members added yet'}
+                </p>
                 <p>Prep activities go to both parents by default.</p>
               </div>
             </Card>

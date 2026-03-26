@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import {
-  Home, BookOpen, Calendar, Flame, ClipboardList, MessageSquare, Sun,
+  Home, BookOpen, Calendar, CalendarDays, Flame, ClipboardList, MessageSquare, Sun,
   Sparkles, ChefHat, MoreHorizontal, X, LayoutTemplate, Settings,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -10,12 +10,12 @@ import { AnimatePresence, motion } from 'framer-motion';
 const plannerPrimaryNav = [
   { to: '/', label: 'Home', icon: Home },
   { to: '/planner', label: 'Planner', icon: Calendar },
-  { to: '/calendar-planner', label: 'Calendar', icon: Calendar },
+  { to: '/calendar-planner', label: 'Calendar', icon: CalendarDays },
   { to: '/shortlist', label: 'Discover', icon: ChefHat },
+  { to: '/generate', label: 'AI Chef', icon: Sparkles },
 ];
 
 const plannerMoreNav = [
-  { to: '/generate', label: 'AI Chef', icon: Sparkles },
   { to: '/recipes', label: 'Recipes', icon: BookOpen },
   { to: '/cook-now', label: 'Cook Now', icon: Flame },
   { to: '/prep', label: 'Prep', icon: ClipboardList },

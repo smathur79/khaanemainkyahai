@@ -68,17 +68,9 @@ export default function HouseholdPage() {
   const openAddMember = () => { setEditingMemberId(null); setForm({ ...emptyForm }); setShowMemberForm(true); };
   const openEditMember = (m: FamilyMember) => { setEditingMemberId(m.id); setForm(memberToForm(m)); setShowMemberForm(true); };
   const toggleCuisine = (c: string) => { setForm(prev => ({ ...prev, preferredCuisines: prev.preferredCuisines.includes(c) ? prev.preferredCuisines.filter(x => x !== c) : [...prev.preferredCuisines, c] })); };
-  const roleTakenByAnotherMember = familyMembers.some(
-    member => member.id !== editingMemberId && member.calendarRole === form.calendarRole && form.calendarRole !== 'unassigned'
-  );
 
   const handleSaveMember = async () => {
     if (!form.name.trim()) { toast.error('Please enter a name'); return; }
-    if (roleTakenByAnotherMember) { toast.error('That calendar role is already assigned'); return; }
-    if ((form.receivesPrepSync || form.calendarRole !== 'unassigned') && !form.calendarEmail.trim()) {
-      toast.error('Please add a calendar email for synced members');
-      return;
-    }
     setSaving(true);
     try {
       const data = {
@@ -231,15 +223,15 @@ export default function HouseholdPage() {
             <div><Label className="text-xs">Allergies / Exclusions</Label><Input placeholder="e.g. peanuts" value={form.exclusions} onChange={e => setForm(p => ({ ...p, exclusions: e.target.value }))} /></div>
             <div><Label className="text-xs mb-1 block">Preferred Cuisines</Label><div className="flex flex-wrap gap-1.5">{CUISINES.map(c => <Badge key={c} variant={form.preferredCuisines.includes(c) ? 'default' : 'outline'} className="cursor-pointer text-xs" onClick={() => toggleCuisine(c)}>{c}</Badge>)}</div></div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label className="text-xs">Calendar Role</Label><Select value={form.calendarRole} onValueChange={v => setForm(p => ({ ...p, calendarRole: v as FamilyCalendarRole, receivesPrepSync: v === 'parent_1' || v === 'parent_2' ? p.receivesPrepSync : false }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{CALENDAR_ROLES.map(role => <SelectItem key={role.value} value={role.value}>{role.label}</SelectItem>)}</SelectContent></Select></div>
+              <div><Label className="text-xs">Calendar Role</Label><Select value={form.calendarRole} onValueChange={v => setForm(p => ({ ...p, calendarRole: v as FamilyCalendarRole }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{CALENDAR_ROLES.map(role => <SelectItem key={role.value} value={role.value}>{role.label}</SelectItem>)}</SelectContent></Select></div>
               <div><Label className="text-xs">Calendar Email</Label><Input placeholder="name@example.com" value={form.calendarEmail} onChange={e => setForm(p => ({ ...p, calendarEmail: e.target.value }))} /></div>
             </div>
             <div className="rounded-lg border p-3">
               <label className="flex items-start gap-3 cursor-pointer">
-                <input type="checkbox" checked={form.receivesPrepSync} disabled={!(form.calendarRole === 'parent_1' || form.calendarRole === 'parent_2')} onChange={e => setForm(p => ({ ...p, receivesPrepSync: e.target.checked }))} className="mt-1" />
+                <input type="checkbox" checked={form.receivesPrepSync} onChange={e => setForm(p => ({ ...p, receivesPrepSync: e.target.checked }))} className="mt-1" />
                 <div>
                   <div className="text-sm font-medium">Receive prep sync</div>
-                  <div className="text-xs text-muted-foreground">Only parent roles can receive the shared prep activities.</div>
+                  <div className="text-xs text-muted-foreground">Turn this on for Parent 1 and Parent 2 so both get prep activities during calendar sync.</div>
                 </div>
               </label>
             </div>

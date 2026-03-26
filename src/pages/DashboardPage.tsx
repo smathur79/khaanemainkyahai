@@ -1,21 +1,18 @@
 import { Link } from 'react-router-dom';
 import { useAppContext } from '@/context/AppContext';
-import { useAuth } from '@/context/AuthContext';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowRight, Calendar, ClipboardList, MessageSquare, Settings, UtensilsCrossed } from 'lucide-react';
+import { ArrowRight, Calendar, ClipboardList, Settings, UtensilsCrossed } from 'lucide-react';
 import { getMonday, formatWeekLabel } from '@/lib/dateUtils';
 import AppLayout from '@/components/AppLayout';
 import { motion } from 'framer-motion';
 
 export default function DashboardPage() {
-  const { household, familyMembers, recipes, mealSlots } = useAppContext();
-  const { role } = useAuth();
+  const { household, familyMembers, recipes, weeklyPlans, mealSlots } = useAppContext();
   const today = new Date();
   const monday = getMonday(today);
   const plannedMeals = mealSlots.filter(s => s.recipeIds.length > 0).length;
-  const isPlanner = role === 'planner';
 
   return (
     <AppLayout>
@@ -24,92 +21,49 @@ export default function DashboardPage() {
           <Badge variant="outline" className="text-xs uppercase tracking-wide">V4</Badge>
           <h1 className="text-3xl md:text-4xl font-bold">{household?.name || 'Family Planner'}</h1>
           <p className="text-muted-foreground">
-            {isPlanner
-              ? 'Choose what you want to plan this week. Keep meals and family calendar separate, but connected.'
-              : 'See the family plan, prep, and requests in one simple place.'}
+            Choose what you want to plan this week. Keep meals and family calendar separate, but connected.
           </p>
           <p className="text-sm text-muted-foreground">{formatWeekLabel(monday)}</p>
         </div>
 
-        {isPlanner ? (
-          <div className="grid gap-4 md:grid-cols-2">
-            <Link to="/planner">
-              <Card className="card-warm-hover p-6 h-full">
-                <div className="space-y-4">
-                  <div className="inline-flex rounded-2xl bg-primary/10 p-3">
-                    <UtensilsCrossed className="h-7 w-7 text-primary" />
-                  </div>
-                  <div className="space-y-1">
-                    <h2 className="text-2xl font-semibold">Food Planning</h2>
-                    <p className="text-sm text-muted-foreground">
-                      Build the weekly meal plan, prep list, recipes, and WhatsApp-ready family menu.
-                    </p>
-                  </div>
-                  <Button className="w-full justify-between">
-                    Open Food Planner <ArrowRight className="h-4 w-4" />
-                  </Button>
+        <div className="grid gap-4 md:grid-cols-2">
+          <Link to="/planner">
+            <Card className="card-warm-hover p-6 h-full">
+              <div className="space-y-4">
+                <div className="inline-flex rounded-2xl bg-primary/10 p-3">
+                  <UtensilsCrossed className="h-7 w-7 text-primary" />
                 </div>
-              </Card>
-            </Link>
-            <Link to="/calendar-planner">
-              <Card className="card-warm-hover p-6 h-full">
-                <div className="space-y-4">
-                  <div className="inline-flex rounded-2xl bg-secondary p-3">
-                    <Calendar className="h-7 w-7 text-secondary-foreground" />
-                  </div>
-                  <div className="space-y-1">
-                    <h2 className="text-2xl font-semibold">Calendar Planning</h2>
-                    <p className="text-sm text-muted-foreground">
-                      Paste the family week, organize classes and school events, then sync the right people to the right calendars.
-                    </p>
-                  </div>
-                  <Button variant="outline" className="w-full justify-between">
-                    Open Calendar Planner <ArrowRight className="h-4 w-4" />
-                  </Button>
+                <div className="space-y-1">
+                  <h2 className="text-2xl font-semibold">Food Planning</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Build the weekly meal plan, prep list, recipes, and WhatsApp-ready family menu.
+                  </p>
                 </div>
-              </Card>
-            </Link>
-          </div>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2">
-            <Link to="/requests">
-              <Card className="card-warm-hover p-6 h-full">
-                <div className="space-y-4">
-                  <div className="inline-flex rounded-2xl bg-primary/10 p-3">
-                    <MessageSquare className="h-7 w-7 text-primary" />
-                  </div>
-                  <div className="space-y-1">
-                    <h2 className="text-2xl font-semibold">Meal Requests</h2>
-                    <p className="text-sm text-muted-foreground">
-                      Ask for meals, add ideas, and keep the planners updated without opening the full planning tools.
-                    </p>
-                  </div>
-                  <Button className="w-full justify-between">
-                    Open Requests <ArrowRight className="h-4 w-4" />
-                  </Button>
+                <Button className="w-full justify-between">
+                  Open Food Planner <ArrowRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </Card>
+          </Link>
+          <Link to="/calendar-planner">
+            <Card className="card-warm-hover p-6 h-full">
+              <div className="space-y-4">
+                <div className="inline-flex rounded-2xl bg-secondary p-3">
+                  <Calendar className="h-7 w-7 text-secondary-foreground" />
                 </div>
-              </Card>
-            </Link>
-            <Link to="/prep">
-              <Card className="card-warm-hover p-6 h-full">
-                <div className="space-y-4">
-                  <div className="inline-flex rounded-2xl bg-secondary p-3">
-                    <ClipboardList className="h-7 w-7 text-secondary-foreground" />
-                  </div>
-                  <div className="space-y-1">
-                    <h2 className="text-2xl font-semibold">Prep & Plan</h2>
-                    <p className="text-sm text-muted-foreground">
-                      View tomorrow&apos;s prep, the family meal plan, and what needs to happen next.
-                    </p>
-                  </div>
-                  <Button variant="outline" className="w-full justify-between">
-                    Open Prep <ArrowRight className="h-4 w-4" />
-                  </Button>
+                <div className="space-y-1">
+                  <h2 className="text-2xl font-semibold">Calendar Planning</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Paste the family week, organize classes and school events, then sync the right people to the right calendars.
+                  </p>
                 </div>
-              </Card>
-            </Link>
-          </div>
-        )}
+                <Button variant="outline" className="w-full justify-between">
+                  Open Calendar Planner <ArrowRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </Card>
+          </Link>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card className="card-warm p-5">

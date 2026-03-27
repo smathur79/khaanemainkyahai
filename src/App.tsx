@@ -17,6 +17,7 @@ import MealRequestsPage from "./pages/MealRequestsPage.tsx";
 import WeeklyTemplatesPage from "./pages/WeeklyTemplatesPage.tsx";
 import RitualsPage from "./pages/RitualsPage.tsx";
 import CalendarPlannerPage from "./pages/CalendarPlannerPage.tsx";
+import FamilyCalendarPage from "./pages/FamilyCalendarPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ const App = () => (
               <Route path="/cook-now" element={<CookNowPage />} />
               <Route path="/prep" element={<PrepPage />} />
               <Route path="/calendar-planner" element={<CalendarPlannerPage />} />
+              <Route path="/calendar" element={<FamilyCalendarPage />} />
               <Route path="/household" element={<HouseholdPage />} />
               <Route path="/requests" element={<MealRequestsPage />} />
               <Route path="/templates" element={<WeeklyTemplatesPage />} />

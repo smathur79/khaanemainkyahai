@@ -1,4 +1,14 @@
 export type MemberLabel = 'Parent' | 'Kid' | 'Other';
+export type EventCategory = 'medical' | 'school' | 'activity' | 'social' | 'travel' | 'other';
+
+export const EVENT_CATEGORIES: { value: EventCategory; label: string; emoji: string }[] = [
+  { value: 'medical', label: 'Medical', emoji: '🏥' },
+  { value: 'school', label: 'School', emoji: '📚' },
+  { value: 'activity', label: 'Activity', emoji: '🎵' },
+  { value: 'social', label: 'Social', emoji: '🎂' },
+  { value: 'travel', label: 'Travel', emoji: '✈️' },
+  { value: 'other', label: 'Other', emoji: '📌' },
+];
 export type FoodType = 'Vegetarian' | 'Eggetarian' | 'Non-Vegetarian' | 'Vegan' | 'Other';
 export type SpiceLevel = 'Low' | 'Medium' | 'High';
 export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'smoothie' | 'dessert';
@@ -112,6 +122,25 @@ export interface WeeklyMealSlot {
   recipeIds: string[]; // computed from items for backward compat
   items: MealSlotItem[];
   notes: string;
+}
+
+export interface FamilyEvent {
+  id: string;
+  householdId: string;
+  title: string;
+  eventDate: string; // YYYY-MM-DD
+  startTime: string | null; // HH:MM
+  endTime: string | null;
+  isAllDay: boolean;
+  category: EventCategory;
+  familyMemberId: string | null;
+  location: string | null;
+  isRecurring: boolean;
+  recurrenceRule: string | null;
+  travelTimeMinutes: number | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface SwipeDecision {

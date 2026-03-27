@@ -3,7 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 import {
   Household, FamilyMember, Recipe, WeeklyPlan, WeeklyMealSlot, MealSlotItem,
-  SwipeDecision, DayOfWeek, MealType, EntryType,
+  SwipeDecision, FamilyEvent, EventCategory,
+  DayOfWeek, MealType, EntryType,
   DAYS_OF_WEEK, PLANNER_MEAL_TYPES,
 } from '@/types/models';
 import { allSeedRecipes } from '@/data/recipes/index';
@@ -83,6 +84,27 @@ function toSlot(s: any, items: any[]): WeeklyMealSlot {
   };
 }
 
+function toFamilyEvent(e: any): FamilyEvent {
+  return {
+    id: e.id,
+    householdId: e.household_id,
+    title: e.title,
+    eventDate: e.event_date,
+    startTime: e.start_time ?? null,
+    endTime: e.end_time ?? null,
+    isAllDay: e.is_all_day ?? false,
+    category: (e.category ?? 'other') as EventCategory,
+    familyMemberId: e.family_member_id ?? null,
+    location: e.location ?? null,
+    isRecurring: e.is_recurring ?? false,
+    recurrenceRule: e.recurrence_rule ?? null,
+    travelTimeMinutes: e.travel_time_minutes ?? null,
+    notes: e.notes ?? null,
+    createdAt: e.created_at,
+    updatedAt: e.updated_at,
+  };
+}
+
 // ── context shape ────────────────────────────────────────
 interface AppState {
   household: Household | null;
@@ -91,6 +113,7 @@ interface AppState {
   weeklyPlans: WeeklyPlan[];
   mealSlots: WeeklyMealSlot[];
   swipeDecisions: SwipeDecision[];
+  familyEvents: FamilyEvent[];
   dataLoading: boolean;
 }
 
@@ -116,6 +139,11 @@ interface AppContextType extends AppState {
   clearSwipeDecisions: (weekStartDate: string) => void;
   clearWeek: (planId: string) => Promise<void>;
   copyLastWeek: (currentWeekStart: string, previousWeekStart: string) => Promise<void>;
+  addFamilyEvent: (event: Omit<FamilyEvent, 'id' | 'householdId' | 'createdAt' | 'updatedAt'>) => Promise<string>;
+  updateFamilyEvent: (id: string, updates: Partial<FamilyEvent>) => Promise<void>;
+  deleteFamilyEvent: (id: string) => Promise<void>;
+  getEventsForDate: (date: string) => FamilyEvent[];
+  getEventsForWeek: (weekStartDate: string) => FamilyEvent[];
   refreshData: () => Promise<void>;
   isOnboarded: boolean;
 }
@@ -129,6 +157,7 @@ const initialState: AppState = {
   weeklyPlans: [],
   mealSlots: [],
   swipeDecisions: [],
+  familyEvents: [],
   dataLoading: true,
 };
 
@@ -145,11 +174,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       { data: membersData },
       { data: recipesData },
       { data: plansData },
+      { data: eventsData },
     ] = await Promise.all([
       supabase.from('households').select('*').eq('id', hid).single(),
       supabase.from('family_members').select('*').eq('household_id', hid),
       supabase.from('recipes').select('*').eq('household_id', hid),
       supabase.from('weekly_plans').select('*').eq('household_id', hid),
+      supabase.from('family_events').select('*').eq('household_id', hid).order('event_date'),
     ]);
 
     const planIds = (plansData ?? []).map((p: any) => p.id);
@@ -186,6 +217,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         status: p.status, isHistorical: p.is_historical, createdAt: p.created_at, updatedAt: p.updated_at,
       })),
       mealSlots: allSlots.map((s: any) => toSlot(s, allItems)),
+      familyEvents: (eventsData ?? []).map(toFamilyEvent),
       swipeDecisions: [],
       dataLoading: false,
     });
@@ -195,7 +227,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (householdId) {
       loadData(householdId);
     } else {
-      setState(prev => ({ ...prev, household: null, familyMembers: [], recipes: [], weeklyPlans: [], mealSlots: [], dataLoading: false }));
+      setState(prev => ({ ...prev, household: null, familyMembers: [], recipes: [], weeklyPlans: [], mealSlots: [], familyEvents: [], dataLoading: false }));
     }
   }, [householdId, loadData]);
 
@@ -527,6 +559,64 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await refreshData();
   }, [householdId, state.weeklyPlans, state.mealSlots, createWeeklyPlan, refreshData]);
 
+  // ── family events ─────────────────────────────────────
+  const addFamilyEvent = useCallback(async (event: Omit<FamilyEvent, 'id' | 'householdId' | 'createdAt' | 'updatedAt'>) => {
+    if (!householdId) return '';
+    const { data, error } = await supabase.from('family_events').insert({
+      household_id: householdId,
+      title: event.title,
+      event_date: event.eventDate,
+      start_time: event.startTime ?? null,
+      end_time: event.endTime ?? null,
+      is_all_day: event.isAllDay,
+      category: event.category as any,
+      family_member_id: event.familyMemberId ?? null,
+      location: event.location ?? null,
+      is_recurring: event.isRecurring,
+      recurrence_rule: event.recurrenceRule ?? null,
+      travel_time_minutes: event.travelTimeMinutes ?? null,
+      notes: event.notes ?? null,
+    }).select('id').single();
+    await refreshData();
+    return data?.id ?? '';
+  }, [householdId, refreshData]);
+
+  const updateFamilyEvent = useCallback(async (id: string, updates: Partial<FamilyEvent>) => {
+    const db: any = {};
+    if (updates.title !== undefined) db.title = updates.title;
+    if (updates.eventDate !== undefined) db.event_date = updates.eventDate;
+    if (updates.startTime !== undefined) db.start_time = updates.startTime;
+    if (updates.endTime !== undefined) db.end_time = updates.endTime;
+    if (updates.isAllDay !== undefined) db.is_all_day = updates.isAllDay;
+    if (updates.category !== undefined) db.category = updates.category;
+    if (updates.familyMemberId !== undefined) db.family_member_id = updates.familyMemberId;
+    if (updates.location !== undefined) db.location = updates.location;
+    if (updates.isRecurring !== undefined) db.is_recurring = updates.isRecurring;
+    if (updates.recurrenceRule !== undefined) db.recurrence_rule = updates.recurrenceRule;
+    if (updates.travelTimeMinutes !== undefined) db.travel_time_minutes = updates.travelTimeMinutes;
+    if (updates.notes !== undefined) db.notes = updates.notes;
+    await supabase.from('family_events').update(db).eq('id', id);
+    await refreshData();
+  }, [refreshData]);
+
+  const deleteFamilyEvent = useCallback(async (id: string) => {
+    await supabase.from('family_events').delete().eq('id', id);
+    setState(prev => ({ ...prev, familyEvents: prev.familyEvents.filter(e => e.id !== id) }));
+  }, []);
+
+  const getEventsForDate = useCallback((date: string) => {
+    return state.familyEvents.filter(e => e.eventDate === date);
+  }, [state.familyEvents]);
+
+  const getEventsForWeek = useCallback((weekStartDate: string) => {
+    const start = new Date(weekStartDate);
+    const end = new Date(weekStartDate);
+    end.setDate(end.getDate() + 6);
+    const startStr = weekStartDate;
+    const endStr = end.toISOString().split('T')[0];
+    return state.familyEvents.filter(e => e.eventDate >= startStr && e.eventDate <= endStr);
+  }, [state.familyEvents]);
+
   // ── swipe decisions (local only for now) ───────────────
   const addSwipeDecision = useCallback((decision: Omit<SwipeDecision, 'id' | 'householdId' | 'createdAt'>) => {
     setState(prev => ({
@@ -577,6 +667,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       clearSwipeDecisions,
       clearWeek,
       copyLastWeek,
+      addFamilyEvent,
+      updateFamilyEvent,
+      deleteFamilyEvent,
+      getEventsForDate,
+      getEventsForWeek,
       refreshData,
       isOnboarded,
     }}>

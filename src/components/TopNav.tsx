@@ -8,7 +8,7 @@ import {
 const plannerNav = [
   { to: '/', label: 'Dashboard', icon: Home },
   { to: '/planner', label: 'Planner', icon: Calendar },
-  { to: '/calendar-planner', label: 'Calendar', icon: CalendarDays },
+  { to: '/calendar', label: 'Family Calendar', icon: CalendarDays },
   { to: '/recipes', label: 'Recipes', icon: BookOpen },
   { to: '/cook-now', label: 'Cook Now', icon: Flame },
   { to: '/prep', label: 'Prep', icon: ClipboardList },

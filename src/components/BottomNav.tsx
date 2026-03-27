@@ -10,7 +10,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 const plannerPrimaryNav = [
   { to: '/', label: 'Home', icon: Home },
   { to: '/planner', label: 'Planner', icon: Calendar },
-  { to: '/calendar-planner', label: 'Calendar', icon: CalendarDays },
+  { to: '/calendar', label: 'Calendar', icon: CalendarDays },
   { to: '/shortlist', label: 'Discover', icon: ChefHat },
   { to: '/generate', label: 'AI Chef', icon: Sparkles },
 ];
@@ -19,6 +19,7 @@ const plannerMoreNav = [
   { to: '/recipes', label: 'Recipes', icon: BookOpen },
   { to: '/cook-now', label: 'Cook Now', icon: Flame },
   { to: '/prep', label: 'Prep', icon: ClipboardList },
+  { to: '/calendar-planner', label: 'Cal Planner', icon: Calendar },
   { to: '/requests', label: 'Requests', icon: MessageSquare },
   { to: '/templates', label: 'Templates', icon: LayoutTemplate },
   { to: '/rituals', label: 'Rituals', icon: Sun },

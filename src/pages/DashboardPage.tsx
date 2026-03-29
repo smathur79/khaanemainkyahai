@@ -4,7 +4,7 @@ import { useAppContext } from '@/context/AppContext';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowRight, CalendarDays, ClipboardList, Settings, UtensilsCrossed } from 'lucide-react';
+import { ArrowRight, ClipboardList, Settings, UtensilsCrossed } from 'lucide-react';
 import { getMonday, formatWeekLabel, formatDateKey } from '@/lib/dateUtils';
 import { DAYS_OF_WEEK, EVENT_CATEGORIES, EventCategory } from '@/types/models';
 import AppLayout from '@/components/AppLayout';
@@ -142,45 +142,25 @@ export default function DashboardPage() {
           </Card>
         )}
 
-        {/* Main planning cards */}
-        <div className="grid gap-4 md:grid-cols-2">
-          <Link to="/planner">
-            <Card className="card-warm-hover p-6 h-full">
-              <div className="space-y-4">
-                <div className="inline-flex rounded-2xl bg-primary/10 p-3">
-                  <UtensilsCrossed className="h-7 w-7 text-primary" />
-                </div>
-                <div className="space-y-1">
-                  <h2 className="text-2xl font-semibold">Food Planning</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Build the weekly meal plan, prep list, recipes, and WhatsApp-ready family menu.
-                  </p>
-                </div>
-                <Button className="w-full justify-between">
-                  Open Food Planner <ArrowRight className="h-4 w-4" />
-                </Button>
+        {/* Main planning card */}
+        <Link to="/planner">
+          <Card className="card-warm-hover p-6">
+            <div className="space-y-4">
+              <div className="inline-flex rounded-2xl bg-primary/10 p-3">
+                <UtensilsCrossed className="h-7 w-7 text-primary" />
               </div>
-            </Card>
-          </Link>
-          <Link to="/calendar">
-            <Card className="card-warm-hover p-6 h-full">
-              <div className="space-y-4">
-                <div className="inline-flex rounded-2xl bg-secondary p-3">
-                  <CalendarDays className="h-7 w-7 text-secondary-foreground" />
-                </div>
-                <div className="space-y-1">
-                  <h2 className="text-2xl font-semibold">Family Calendar</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Track classes, appointments, and events. See meals and schedules side by side.
-                  </p>
-                </div>
-                <Button variant="outline" className="w-full justify-between">
-                  Open Calendar <ArrowRight className="h-4 w-4" />
-                </Button>
+              <div className="space-y-1">
+                <h2 className="text-2xl font-semibold">Food Planning</h2>
+                <p className="text-sm text-muted-foreground">
+                  Build the weekly meal plan, prep list, recipes, and WhatsApp-ready family menu.
+                </p>
               </div>
-            </Card>
-          </Link>
-        </div>
+              <Button className="w-full justify-between">
+                Open Food Planner <ArrowRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </Card>
+        </Link>
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

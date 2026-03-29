@@ -173,7 +173,7 @@ export function generateWeeklyPlanPdf({ weekLabel, householdName, slots, recipes
   const pageHeight = doc.internal.pageSize.getHeight();
   doc.setFontSize(7);
   doc.setTextColor(170, 170, 170);
-  doc.text('Family Meal Planner', 105, pageHeight - 8, { align: 'center' });
+  doc.text('Family Planner', 105, pageHeight - 8, { align: 'center' });
 
   doc.save(`meal-plan-${weekLabel.replace(/[^a-zA-Z0-9]/g, '-')}.pdf`);
 }

@@ -136,7 +136,7 @@ export default function OnboardingPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4">
             <UtensilsCrossed className="h-8 w-8 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold text-foreground">Family Meal Planner</h1>
+          <h1 className="text-3xl font-bold text-foreground">Family Planner</h1>
           <p className="text-muted-foreground mt-2">Plan meals together, stress-free</p>
         </motion.div>
 

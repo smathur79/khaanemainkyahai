@@ -2,33 +2,27 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import {
-  Home, BookOpen, Calendar, CalendarDays, Flame, ClipboardList, MessageSquare, Sun,
-  Sparkles, ChefHat, MoreHorizontal, X, LayoutTemplate, Settings,
+  Home, BookOpen, Calendar, ClipboardList, Sun,
+  Sparkles, ChefHat, MoreHorizontal, X, Settings,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 const plannerPrimaryNav = [
   { to: '/', label: 'Home', icon: Home },
   { to: '/planner', label: 'Planner', icon: Calendar },
-  { to: '/calendar', label: 'Calendar', icon: CalendarDays },
   { to: '/shortlist', label: 'Discover', icon: ChefHat },
   { to: '/generate', label: 'AI Chef', icon: Sparkles },
 ];
 
 const plannerMoreNav = [
   { to: '/recipes', label: 'Recipes', icon: BookOpen },
-  { to: '/cook-now', label: 'Cook Now', icon: Flame },
   { to: '/prep', label: 'Prep', icon: ClipboardList },
-  { to: '/calendar-planner', label: 'Cal Planner', icon: Calendar },
-  { to: '/requests', label: 'Requests', icon: MessageSquare },
-  { to: '/templates', label: 'Templates', icon: LayoutTemplate },
   { to: '/rituals', label: 'Rituals', icon: Sun },
   { to: '/household', label: 'Settings', icon: Settings },
 ];
 
 const familyMemberPrimaryNav = [
   { to: '/', label: 'Home', icon: Home },
-  { to: '/requests', label: 'Request', icon: MessageSquare },
   { to: '/recipes', label: 'Recipes', icon: BookOpen },
   { to: '/household', label: 'Settings', icon: Settings },
 ];

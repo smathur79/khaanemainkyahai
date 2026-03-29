@@ -66,6 +66,22 @@ export default function WeeklyPlannerPage() {
   const [bulkText, setBulkText] = useState('');
   const [bulkImporting, setBulkImporting] = useState(false);
 
+  // Meal type visibility toggles
+  const [visibleMeals, setVisibleMeals] = useState<Set<MealType>>(new Set(PLANNER_MEAL_TYPES));
+
+  const toggleMeal = (meal: MealType) => {
+    setVisibleMeals(prev => {
+      const next = new Set(prev);
+      if (next.has(meal)) {
+        if (next.size === 1) return prev; // keep at least one
+        next.delete(meal);
+      } else {
+        next.add(meal);
+      }
+      return next;
+    });
+  };
+
   // WhatsApp copy
   const [copied, setCopied] = useState(false);
 
@@ -421,21 +437,38 @@ export default function WeeklyPlannerPage() {
           </Button>
         </div>
 
+        {/* Meal type toggles */}
+        <div className="flex gap-2 flex-wrap">
+          {PLANNER_MEAL_TYPES.map(m => (
+            <button
+              key={m}
+              onClick={() => toggleMeal(m)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
+                visibleMeals.has(m)
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-muted text-muted-foreground border-transparent'
+              }`}
+            >
+              {MEAL_EMOJI[m]} {MEAL_LABELS[m]}
+            </button>
+          ))}
+        </div>
+
         {/* Grid */}
         <div className="overflow-x-auto">
-          <div className="min-w-[800px]">
-            <div className="grid grid-cols-5 gap-2 mb-2">
+          <div style={{ minWidth: `${(visibleMeals.size + 1) * 160}px` }}>
+            <div className={`grid gap-2 mb-2`} style={{ gridTemplateColumns: `160px repeat(${visibleMeals.size}, 1fr)` }}>
               <div className="font-semibold text-sm text-muted-foreground p-2">Day</div>
-              {PLANNER_MEAL_TYPES.map(m => (
+              {PLANNER_MEAL_TYPES.filter(m => visibleMeals.has(m)).map(m => (
                 <div key={m} className="font-semibold text-sm text-muted-foreground p-2 capitalize text-center">
                   {MEAL_EMOJI[m]} {m}
                 </div>
               ))}
             </div>
             {DAYS_OF_WEEK.map(day => (
-              <div key={day} className="grid grid-cols-5 gap-2 mb-2">
+              <div key={day} className="grid gap-2 mb-2" style={{ gridTemplateColumns: `160px repeat(${visibleMeals.size}, 1fr)` }}>
                 <div className="flex items-center p-2 font-medium text-sm">{day}</div>
-                {PLANNER_MEAL_TYPES.map(meal => {
+                {PLANNER_MEAL_TYPES.filter(meal => visibleMeals.has(meal)).map(meal => {
                   const slotRecipes = getSlotRecipes(day, meal);
                   return (
                     <Card

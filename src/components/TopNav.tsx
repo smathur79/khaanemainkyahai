@@ -1,26 +1,21 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import {
-  Home, BookOpen, Calendar, CalendarDays, Flame, ClipboardList, ChefHat,
-  UtensilsCrossed, Settings, LayoutTemplate, Sun, MessageSquare,
+  Home, BookOpen, Calendar, ClipboardList, ChefHat,
+  UtensilsCrossed, Settings, Sun,
 } from 'lucide-react';
 
 const plannerNav = [
   { to: '/', label: 'Dashboard', icon: Home },
   { to: '/planner', label: 'Planner', icon: Calendar },
-  { to: '/calendar', label: 'Family Calendar', icon: CalendarDays },
   { to: '/recipes', label: 'Recipes', icon: BookOpen },
-  { to: '/cook-now', label: 'Cook Now', icon: Flame },
   { to: '/prep', label: 'Prep', icon: ClipboardList },
-  { to: '/templates', label: 'Templates', icon: LayoutTemplate },
   { to: '/rituals', label: 'Rituals', icon: Sun },
-  { to: '/requests', label: 'Requests', icon: MessageSquare },
   { to: '/household', label: 'Settings', icon: Settings },
 ];
 
 const familyMemberNav = [
   { to: '/', label: 'Home', icon: Home },
-  { to: '/requests', label: 'Request', icon: MessageSquare },
   { to: '/recipes', label: 'Recipes', icon: BookOpen },
   { to: '/household', label: 'Settings', icon: Settings },
 ];
@@ -35,7 +30,7 @@ export default function TopNav() {
       <div className="container flex items-center justify-between h-16">
         <Link to="/" className="flex items-center gap-2 font-display text-xl font-bold text-primary">
           <UtensilsCrossed className="h-6 w-6" />
-          Family Meal Planner
+          Family Planner
         </Link>
         <nav className="flex items-center gap-1">
           {navItems.map(item => {

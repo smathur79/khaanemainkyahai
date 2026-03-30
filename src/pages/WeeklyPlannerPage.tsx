@@ -68,24 +68,33 @@ export default function WeeklyPlannerPage() {
 
   // Calendar sync dialog
   const [calSyncOpen, setCalSyncOpen] = useState(false);
-  const [calLinks, setCalLinks] = useState<{ day: DayOfWeek; url: string }[]>([]);
+  const [calLinks, setCalLinks] = useState<{ day: DayOfWeek; nextDay: DayOfWeek; url: string }[]>([]);
 
   const openCalSync = () => {
     const fmt = (d: Date) => `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}T${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}00`;
-    const links = DAYS_OF_WEEK.map(day => {
-      const dayIndex = DAYS_OF_WEEK.indexOf(day);
+    // Each prep event is on day X at 9pm, but contains meals for day X+1
+    const links = DAYS_OF_WEEK.map((day, dayIndex) => {
+      const nextDayIndex = (dayIndex + 1) % DAYS_OF_WEEK.length;
+      const nextDay = DAYS_OF_WEEK[nextDayIndex];
+
+      // Event scheduled on prep night (day X at 9pm)
       const date = new Date(currentMonday);
       date.setDate(date.getDate() + dayIndex);
       date.setHours(21, 0, 0, 0);
       const end = new Date(date);
       end.setMinutes(end.getMinutes() + 30);
+
+      // Meals from the next day's slots, using items.title directly
+      const nextDaySlots = slots.filter(s => s.dayOfWeek === nextDay);
       const dayMeals = PLANNER_MEAL_TYPES.map(meal => {
-        const sr = getSlotRecipes(day, meal);
-        return sr.length > 0 ? `${MEAL_EMOJI[meal]} ${sr.map(r => r.title).join(', ')}` : null;
+        const slot = nextDaySlots.find(s => s.mealType === meal);
+        const titles = slot?.items?.map(i => i.title).filter(Boolean) ?? [];
+        return titles.length > 0 ? `${MEAL_EMOJI[meal]} ${titles.join(', ')}` : null;
       }).filter(Boolean);
       const details = dayMeals.length > 0 ? dayMeals.join('\n') : 'No meals planned';
-      const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`🍽️ Meal Prep — ${day}`)}&dates=${fmt(date)}/${fmt(end)}&details=${encodeURIComponent(details)}`;
-      return { day, url };
+
+      const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`🍽️ Meal Prep — ${nextDay}`)}&dates=${fmt(date)}/${fmt(end)}&details=${encodeURIComponent(details)}`;
+      return { day, url, nextDay };
     });
     setCalLinks(links);
     setCalSyncOpen(true);
@@ -603,7 +612,7 @@ export default function WeeklyPlannerPage() {
             </DialogHeader>
             <p className="text-sm text-muted-foreground">Click each day to add it to Google Calendar.</p>
             <div className="space-y-2 mt-2">
-              {calLinks.map(({ day, url }) => (
+              {calLinks.map(({ day, nextDay, url }) => (
                 <a
                   key={day}
                   href={url}
@@ -611,7 +620,10 @@ export default function WeeklyPlannerPage() {
                   rel="noopener noreferrer"
                   className="flex items-center justify-between w-full px-4 py-3 rounded-lg border bg-muted hover:bg-primary/10 hover:border-primary transition-colors text-sm font-medium"
                 >
-                  <span>🍽️ Prep — {day}</span>
+                  <div>
+                    <div>🍽️ Prep for {nextDay}</div>
+                    <div className="text-xs text-muted-foreground font-normal">{day} night</div>
+                  </div>
                   <CalendarPlus className="h-4 w-4 text-muted-foreground" />
                 </a>
               ))}

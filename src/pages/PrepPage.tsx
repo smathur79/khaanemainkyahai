@@ -5,10 +5,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { PLANNER_MEAL_TYPES, DayOfWeek, DAYS_OF_WEEK } from '@/types/models';
 import { getMonday, formatDateKey } from '@/lib/dateUtils';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { ClipboardList, Sun, Moon, ChefHat, Copy, Check, Sunrise, Cookie, CalendarPlus } from 'lucide-react';
+import { Copy, Check, CalendarPlus } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
@@ -198,138 +196,20 @@ export default function PrepPage() {
 
   return (
     <AppLayout>
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-2xl mx-auto">
-        <div className="text-center">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-primary/10 mb-3">
-            <ClipboardList className="h-6 w-6 text-primary" />
-          </div>
-          <h1 className="text-2xl font-bold">Tomorrow's Prep</h1>
-          <p className="text-sm text-muted-foreground">{tomorrowDay}, {tomorrowFormatted}</p>
-        </div>
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4 max-w-2xl mx-auto">
+        <Button onClick={handleCopy} className="w-full" size="lg">
+          {copied ? <Check className="mr-2 h-5 w-5" /> : <Copy className="mr-2 h-5 w-5" />}
+          {copied ? 'Copied!' : 'Copy for WhatsApp'}
+        </Button>
 
-        {!plan ? (
-          <Card className="card-warm p-8 text-center">
-            <p className="text-muted-foreground">No plan for this week yet. Go to the planner to create one.</p>
-          </Card>
-        ) : (
-          <>
-            {/* Night Prep */}
-            {(needsSoak || needsThaw || nightRituals.length > 0) && (
-              <Card className="card-warm p-5 border-indigo-200/50">
-                <div className="flex items-center gap-2 mb-3">
-                  <Moon className="h-5 w-5 text-indigo-400" />
-                  <h2 className="text-lg font-semibold">Night Prep</h2>
-                </div>
-                <div className="space-y-2">
-                  {needsSoak && (
-                    <div className="flex items-center gap-2 text-sm bg-secondary/50 rounded-lg p-3">
-                      <span>🫘</span> <span>Soak lentils/beans tonight</span>
-                    </div>
-                  )}
-                  {needsThaw && (
-                    <div className="flex items-center gap-2 text-sm bg-secondary/50 rounded-lg p-3">
-                      <span>🧊</span> <span>Thaw meat/fish overnight</span>
-                    </div>
-                  )}
-                  {nightRituals.map(r => (
-                    <div key={r.id}>
-                      {r.items.map(item => (
-                        <div key={item.id} className="flex items-center gap-2 text-sm bg-secondary/50 rounded-lg p-3 mb-1">
-                          <span>🌙</span> <span>{item.text}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            )}
+        <Button onClick={handleAddToCalendar} variant="outline" className="w-full" size="lg">
+          <CalendarPlus className="mr-2 h-5 w-5" />
+          Add to Google Calendar
+        </Button>
 
-            {/* Morning */}
-            {(needsEarlyStart || morningRituals.length > 0) && (
-              <Card className="card-warm p-5 border-amber-200/50">
-                <div className="flex items-center gap-2 mb-3">
-                  <Sunrise className="h-5 w-5 text-amber-500" />
-                  <h2 className="text-lg font-semibold">Morning</h2>
-                </div>
-                <div className="space-y-2">
-                  {needsEarlyStart && (
-                    <div className="flex items-center gap-2 text-sm bg-secondary/50 rounded-lg p-3">
-                      <span>⏰</span> <span>Start prep early — some dishes take time</span>
-                    </div>
-                  )}
-                  {morningRituals.map(r => (
-                    <div key={r.id}>
-                      {r.items.map(item => (
-                        <div key={item.id} className="flex items-center gap-2 text-sm bg-secondary/50 rounded-lg p-3 mb-1">
-                          <span>☀️</span> <span>{item.text}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            )}
-
-            {/* Meals */}
-            <div className="space-y-4">
-              {tomorrowMeals.map(({ meal, slot, recipes: mealRecipes }) => (
-                <Card key={meal} className="card-warm p-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-lg">{MEAL_EMOJI[meal]}</span>
-                    <h2 className="text-lg font-semibold">{MEAL_LABELS[meal]}</h2>
-                    {slot && slot.entryType !== 'cooked' && (
-                      <Badge variant="outline" className="text-xs capitalize">{slot.entryType.replace('_', ' ')}</Badge>
-                    )}
-                  </div>
-                  {mealRecipes.length > 0 ? (
-                    <div className="space-y-2">
-                      {mealRecipes.map(r => (
-                        <div key={r.id} className="flex items-center justify-between bg-muted rounded-lg p-3">
-                          <div>
-                            <div className="font-medium text-sm">{r.title}</div>
-                            <div className="text-xs text-muted-foreground">{r.cuisine} · {r.prepTimeMinutes} min</div>
-                          </div>
-                          <Badge variant="secondary" className="text-xs capitalize">{r.effort}</Badge>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">Nothing planned yet</p>
-                  )}
-                </Card>
-              ))}
-            </div>
-
-            {/* Notes */}
-            <Card className="card-warm p-5">
-              <h2 className="text-sm font-semibold mb-2">📝 Extra Notes</h2>
-              <Textarea
-                placeholder="Any extra notes for tomorrow? (e.g., pack lunch for school, buy curd...)"
-                value={notes}
-                onChange={e => setNotes(e.target.value)}
-                rows={3}
-                className="text-sm"
-              />
-            </Card>
-
-            {/* Copy for WhatsApp */}
-            <Button onClick={handleCopy} className="w-full" size="lg">
-              {copied ? <Check className="mr-2 h-5 w-5" /> : <Copy className="mr-2 h-5 w-5" />}
-              {copied ? 'Copied!' : 'Copy for WhatsApp'}
-            </Button>
-
-            <Button onClick={handleAddToCalendar} variant="outline" className="w-full" size="lg">
-              <CalendarPlus className="mr-2 h-5 w-5" />
-              Add to Google Calendar
-            </Button>
-
-            {/* Preview */}
-            <Card className="p-4 bg-muted/30">
-              <p className="text-xs font-medium text-muted-foreground mb-2">Preview</p>
-              <pre className="text-xs whitespace-pre-wrap text-muted-foreground font-mono leading-relaxed">{whatsappMessage}</pre>
-            </Card>
-          </>
-        )}
+        <Card className="p-4 bg-muted/30">
+          <pre className="text-xs whitespace-pre-wrap text-muted-foreground font-mono leading-relaxed">{whatsappMessage}</pre>
+        </Card>
       </motion.div>
     </AppLayout>
   );

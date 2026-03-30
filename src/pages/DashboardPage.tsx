@@ -111,37 +111,6 @@ export default function DashboardPage() {
           <p className="text-sm text-muted-foreground">{formatWeekLabel(monday)}</p>
         </div>
 
-        {/* Today card */}
-        {(todaySlots.some(s => s.items.length > 0) || todayEvents.length > 0) && (
-          <Card className="card-warm p-5">
-            <h3 className="text-sm font-semibold text-muted-foreground mb-3">Today</h3>
-            <div className="space-y-1.5">
-              {['breakfast', 'lunch', 'snack', 'dinner'].map(mt => {
-                const slot = todaySlots.find(s => s.mealType === mt);
-                if (!slot || slot.items.length === 0) return null;
-                const emoji = { breakfast: '🍳', lunch: '🍚', snack: '🍪', dinner: '🍽️' }[mt];
-                return (
-                  <p key={mt} className="text-sm">
-                    {emoji} {slot.items.map(i => i.title).join(' · ')}
-                  </p>
-                );
-              })}
-              {todayEvents.length > 0 && <div className="h-px bg-border my-2" />}
-              {todayEvents.map(ev => {
-                const member = familyMembers.find(m => m.id === ev.familyMemberId);
-                return (
-                  <div key={ev.id} className="flex items-center gap-2">
-                    <span>{getCategoryEmoji(ev.category)}</span>
-                    <span className="text-sm font-medium">{ev.title}</span>
-                    {ev.startTime && <span className="text-xs text-muted-foreground">{formatTime(ev.startTime)}</span>}
-                    {member && <span className="text-xs text-muted-foreground">· {member.name}</span>}
-                  </div>
-                );
-              })}
-            </div>
-          </Card>
-        )}
-
         {/* Main planning card */}
         <Link to="/planner">
           <Card className="card-warm-hover p-6">
@@ -161,25 +130,6 @@ export default function DashboardPage() {
             </div>
           </Card>
         </Link>
-
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="card-warm p-5">
-            <h3 className="text-sm font-medium text-muted-foreground">Family</h3>
-            <p className="mt-2 text-3xl font-bold">{familyMembers.length}</p>
-            <p className="text-sm text-muted-foreground">People in this household</p>
-          </Card>
-          <Card className="card-warm p-5">
-            <h3 className="text-sm font-medium text-muted-foreground">Recipes</h3>
-            <p className="mt-2 text-3xl font-bold">{recipes.length}</p>
-            <p className="text-sm text-muted-foreground">Dishes available</p>
-          </Card>
-          <Card className="card-warm p-5">
-            <h3 className="text-sm font-medium text-muted-foreground">Planned Meals</h3>
-            <p className="mt-2 text-3xl font-bold">{plannedMeals}</p>
-            <p className="text-sm text-muted-foreground">Slots filled this week</p>
-          </Card>
-        </div>
 
         {/* Joke of the Moment */}
         <Card className="card-warm p-5 bg-amber-50/50 border-amber-100">
@@ -232,6 +182,25 @@ export default function DashboardPage() {
           <Link to="/household">
             <Button variant="outline"><Settings className="mr-2 h-4 w-4" /> Settings</Button>
           </Link>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="card-warm p-5">
+            <h3 className="text-sm font-medium text-muted-foreground">Family</h3>
+            <p className="mt-2 text-3xl font-bold">{familyMembers.length}</p>
+            <p className="text-sm text-muted-foreground">People in this household</p>
+          </Card>
+          <Card className="card-warm p-5">
+            <h3 className="text-sm font-medium text-muted-foreground">Recipes</h3>
+            <p className="mt-2 text-3xl font-bold">{recipes.length}</p>
+            <p className="text-sm text-muted-foreground">Dishes available</p>
+          </Card>
+          <Card className="card-warm p-5">
+            <h3 className="text-sm font-medium text-muted-foreground">Planned Meals</h3>
+            <p className="mt-2 text-3xl font-bold">{plannedMeals}</p>
+            <p className="text-sm text-muted-foreground">Slots filled this week</p>
+          </Card>
         </div>
       </motion.div>
     </AppLayout>

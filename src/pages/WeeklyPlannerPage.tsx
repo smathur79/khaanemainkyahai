@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ChevronLeft, ChevronRight, Check, X, Copy, Wand2, Download, Plus, Trash2, CopyCheck, ClipboardPaste } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Check, X, Copy, Wand2, Download, Plus, Trash2, CopyCheck, ClipboardPaste, CalendarPlus } from 'lucide-react';
 import { generateWeeklyPlanPdf } from '@/lib/generatePlanPdf';
 import { parseWeeklyMenuText } from '@/lib/weeklyMenuImport';
 import AppLayout from '@/components/AppLayout';
@@ -65,6 +65,43 @@ export default function WeeklyPlannerPage() {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkText, setBulkText] = useState('');
   const [bulkImporting, setBulkImporting] = useState(false);
+
+  // Calendar sync dialog
+  const [calSyncOpen, setCalSyncOpen] = useState(false);
+  const [selectedDays, setSelectedDays] = useState<Set<DayOfWeek>>(new Set(DAYS_OF_WEEK));
+
+  const toggleCalDay = (day: DayOfWeek) => {
+    setSelectedDays(prev => {
+      const next = new Set(prev);
+      if (next.has(day)) { next.delete(day); } else { next.add(day); }
+      return next;
+    });
+  };
+
+  const handleCalendarSync = () => {
+    const daysToSync = DAYS_OF_WEEK.filter(d => selectedDays.has(d));
+    for (const day of daysToSync) {
+      const dayIndex = DAYS_OF_WEEK.indexOf(day);
+      const date = new Date(currentMonday);
+      date.setDate(date.getDate() + dayIndex);
+      date.setHours(21, 0, 0, 0);
+      const end = new Date(date);
+      end.setMinutes(end.getMinutes() + 30);
+
+      const dayMeals: string[] = [];
+      for (const meal of PLANNER_MEAL_TYPES) {
+        const sr = getSlotRecipes(day, meal);
+        if (sr.length > 0) dayMeals.push(`${MEAL_EMOJI[meal]} ${sr.map(r => r.title).join(', ')}`);
+      }
+      const details = dayMeals.length > 0 ? dayMeals.join('\n') : 'No meals planned';
+
+      const fmt = (d: Date) => `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}T${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}00`;
+      const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`🍽️ Meal Prep — ${day}`)}&dates=${fmt(date)}/${fmt(end)}&details=${encodeURIComponent(details)}`;
+      window.open(url, '_blank');
+    }
+    setCalSyncOpen(false);
+    toast.success(`Synced ${daysToSync.length} day${daysToSync.length > 1 ? 's' : ''} to Google Calendar`);
+  };
 
   // Meal type visibility toggles
   const [visibleMeals, setVisibleMeals] = useState<Set<MealType>>(new Set(PLANNER_MEAL_TYPES));
@@ -435,6 +472,9 @@ export default function WeeklyPlannerPage() {
             {copied ? <Check className="mr-1 h-4 w-4" /> : <MessageSquare className="mr-1 h-4 w-4" />}
             {copied ? 'Copied!' : 'WhatsApp'}
           </Button>
+          <Button variant="outline" size="sm" onClick={() => setCalSyncOpen(true)}>
+            <CalendarPlus className="mr-1 h-4 w-4" /> Calendar Sync
+          </Button>
         </div>
 
         {/* Meal type toggles */}
@@ -564,6 +604,35 @@ export default function WeeklyPlannerPage() {
                 </button>
               ))}
             </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Calendar Sync Dialog */}
+        <Dialog open={calSyncOpen} onOpenChange={setCalSyncOpen}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Calendar Sync</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground">Select which days to add as prep reminders in Google Calendar.</p>
+            <div className="grid grid-cols-2 gap-2 mt-2">
+              {DAYS_OF_WEEK.map(day => (
+                <button
+                  key={day}
+                  onClick={() => toggleCalDay(day)}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors border ${
+                    selectedDays.has(day)
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-muted text-muted-foreground border-transparent'
+                  }`}
+                >
+                  {day}
+                </button>
+              ))}
+            </div>
+            <Button className="w-full mt-2" onClick={handleCalendarSync} disabled={selectedDays.size === 0}>
+              <CalendarPlus className="mr-2 h-4 w-4" />
+              Add {selectedDays.size} day{selectedDays.size !== 1 ? 's' : ''} to Google Calendar
+            </Button>
           </DialogContent>
         </Dialog>
 

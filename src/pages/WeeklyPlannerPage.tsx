@@ -68,20 +68,11 @@ export default function WeeklyPlannerPage() {
 
   // Calendar sync dialog
   const [calSyncOpen, setCalSyncOpen] = useState(false);
-  const [selectedDays, setSelectedDays] = useState<Set<DayOfWeek>>(new Set(DAYS_OF_WEEK));
   const [calLinks, setCalLinks] = useState<{ day: DayOfWeek; url: string }[]>([]);
 
-  const toggleCalDay = (day: DayOfWeek) => {
-    setSelectedDays(prev => {
-      const next = new Set(prev);
-      if (next.has(day)) { next.delete(day); } else { next.add(day); }
-      return next;
-    });
-  };
-
-  const buildCalLinks = () => {
+  const openCalSync = () => {
     const fmt = (d: Date) => `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}T${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}00`;
-    const links = DAYS_OF_WEEK.filter(d => selectedDays.has(d)).map(day => {
+    const links = DAYS_OF_WEEK.map(day => {
       const dayIndex = DAYS_OF_WEEK.indexOf(day);
       const date = new Date(currentMonday);
       date.setDate(date.getDate() + dayIndex);
@@ -97,6 +88,7 @@ export default function WeeklyPlannerPage() {
       return { day, url };
     });
     setCalLinks(links);
+    setCalSyncOpen(true);
   };
 
   // Meal type visibility toggles
@@ -468,7 +460,7 @@ export default function WeeklyPlannerPage() {
             {copied ? <Check className="mr-1 h-4 w-4" /> : <MessageSquare className="mr-1 h-4 w-4" />}
             {copied ? 'Copied!' : 'WhatsApp'}
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setCalSyncOpen(true)}>
+          <Button variant="outline" size="sm" onClick={openCalSync}>
             <CalendarPlus className="mr-1 h-4 w-4" /> Calendar Sync
           </Button>
         </div>
@@ -604,54 +596,26 @@ export default function WeeklyPlannerPage() {
         </Dialog>
 
         {/* Calendar Sync Dialog */}
-        <Dialog open={calSyncOpen} onOpenChange={(open) => { setCalSyncOpen(open); if (!open) setCalLinks([]); }}>
+        <Dialog open={calSyncOpen} onOpenChange={setCalSyncOpen}>
           <DialogContent className="max-w-sm">
             <DialogHeader>
               <DialogTitle>Calendar Sync</DialogTitle>
             </DialogHeader>
-            {calLinks.length === 0 ? (
-              <>
-                <p className="text-sm text-muted-foreground">Select which days to add as prep reminders in Google Calendar.</p>
-                <div className="grid grid-cols-2 gap-2 mt-2">
-                  {DAYS_OF_WEEK.map(day => (
-                    <button
-                      key={day}
-                      onClick={() => toggleCalDay(day)}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors border ${
-                        selectedDays.has(day)
-                          ? 'bg-primary text-primary-foreground border-primary'
-                          : 'bg-muted text-muted-foreground border-transparent'
-                      }`}
-                    >
-                      {day}
-                    </button>
-                  ))}
-                </div>
-                <Button className="w-full mt-2" onClick={buildCalLinks} disabled={selectedDays.size === 0}>
-                  <CalendarPlus className="mr-2 h-4 w-4" />
-                  Generate {selectedDays.size} Calendar Link{selectedDays.size !== 1 ? 's' : ''}
-                </Button>
-              </>
-            ) : (
-              <>
-                <p className="text-sm text-muted-foreground">Click each day to open it in Google Calendar.</p>
-                <div className="space-y-2 mt-2">
-                  {calLinks.map(({ day, url }) => (
-                    <a
-                      key={day}
-                      href={url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-between w-full px-4 py-3 rounded-lg border bg-muted hover:bg-primary/10 hover:border-primary transition-colors text-sm font-medium"
-                    >
-                      <span>🍽️ Prep — {day}</span>
-                      <CalendarPlus className="h-4 w-4 text-muted-foreground" />
-                    </a>
-                  ))}
-                </div>
-                <button onClick={() => setCalLinks([])} className="text-xs text-muted-foreground hover:underline mt-1">← Back</button>
-              </>
-            )}
+            <p className="text-sm text-muted-foreground">Click each day to add it to Google Calendar.</p>
+            <div className="space-y-2 mt-2">
+              {calLinks.map(({ day, url }) => (
+                <a
+                  key={day}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between w-full px-4 py-3 rounded-lg border bg-muted hover:bg-primary/10 hover:border-primary transition-colors text-sm font-medium"
+                >
+                  <span>🍽️ Prep — {day}</span>
+                  <CalendarPlus className="h-4 w-4 text-muted-foreground" />
+                </a>
+              ))}
+            </div>
           </DialogContent>
         </Dialog>
 

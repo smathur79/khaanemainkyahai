@@ -84,12 +84,10 @@ export default function WeeklyPlannerPage() {
       const end = new Date(date);
       end.setMinutes(end.getMinutes() + 30);
 
-      // Meals from the next day's slots, using items.title directly
-      const nextDaySlots = slots.filter(s => s.dayOfWeek === nextDay);
+      // Meals from the next day's slots, using recipe lookup (same as WhatsApp copy)
       const dayMeals = PLANNER_MEAL_TYPES.map(meal => {
-        const slot = nextDaySlots.find(s => s.mealType === meal);
-        const titles = slot?.items?.map(i => i.title).filter(Boolean) ?? [];
-        return titles.length > 0 ? `${MEAL_EMOJI[meal]} ${titles.join(', ')}` : null;
+        const sr = getSlotRecipes(nextDay, meal);
+        return sr.length > 0 ? `${MEAL_EMOJI[meal]} ${sr.map(r => r.title).join(', ')}` : null;
       }).filter(Boolean);
       const details = dayMeals.length > 0 ? dayMeals.join('\n') : 'No meals planned';
 

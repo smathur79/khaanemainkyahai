@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { DAYS_OF_WEEK, PLANNER_MEAL_TYPES, DayOfWeek, MealType } from '@/types/models';
 import { getMonday, formatWeekLabel, formatDateKey, addWeeks } from '@/lib/dateUtils';
+import { buildPrepPlanMessage, toCalendarDetailsText } from '@/lib/calendarText';
 import { getRecommendations } from '@/lib/recommendations';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -72,7 +73,7 @@ export default function WeeklyPlannerPage() {
 
   const openCalSync = () => {
     const fmt = (d: Date) => `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}T${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}00`;
-    // Each prep event is on day X at 9pm, but contains meals for day X+1
+
     const links = DAYS_OF_WEEK.map((day, dayIndex) => {
       const nextDayIndex = (dayIndex + 1) % DAYS_OF_WEEK.length;
       const nextDay = DAYS_OF_WEEK[nextDayIndex];
@@ -84,12 +85,38 @@ export default function WeeklyPlannerPage() {
       const end = new Date(date);
       end.setMinutes(end.getMinutes() + 30);
 
-      // Meals from the next day's slots, using recipe lookup (same as WhatsApp copy)
-      const dayMeals = PLANNER_MEAL_TYPES.map(meal => {
+      // Next day's date label
+      const nextDate = new Date(currentMonday);
+      nextDate.setDate(nextDate.getDate() + nextDayIndex);
+      const dateLabel = nextDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+
+      // Compute prep hints from next day's recipes
+      const nextDayRecipes = PLANNER_MEAL_TYPES.flatMap(meal => getSlotRecipes(nextDay, meal));
+      const needsSoak = nextDayRecipes.some(r => r.ingredients.some(i => /soak|dal|rajma|chana|chole|rice/i.test(i)));
+      const needsThaw = nextDayRecipes.some(r => r.ingredients.some(i => /chicken|fish|meat|thaw|prawn/i.test(i)));
+      const needsEarlyStart = nextDayRecipes.some(r => r.effort === 'weekend' || r.prepTimeMinutes > 30);
+
+      const nightPrep: string[] = [];
+      if (needsSoak) nightPrep.push('Soak lentils/beans tonight');
+      if (needsThaw) nightPrep.push('Thaw meat/fish overnight');
+
+      const morningPrep: string[] = [];
+      if (needsEarlyStart) morningPrep.push('Start prep early — some dishes take time');
+
+      const meals = PLANNER_MEAL_TYPES.map(meal => {
         const sr = getSlotRecipes(nextDay, meal);
-        return sr.length > 0 ? `${MEAL_EMOJI[meal]} ${sr.map(r => r.title).join(', ')}` : null;
-      }).filter(Boolean);
-      const details = dayMeals.length > 0 ? dayMeals.join('\n') : 'No meals planned';
+        const slot = slots.find(s => s.dayOfWeek === nextDay && s.mealType === meal);
+        return {
+          meal,
+          label: ({ breakfast: 'Breakfast', lunch: 'Lunch', snack: 'Afternoon Snack', dinner: 'Dinner' } as Record<string, string>)[meal] || meal,
+          emoji: MEAL_EMOJI[meal] || '🍽️',
+          recipes: sr.map(r => ({ title: r.title, prepTimeMinutes: r.prepTimeMinutes })),
+          entryType: slot?.entryType,
+        };
+      });
+
+      const message = buildPrepPlanMessage({ dayLabel: nextDay, dateLabel, nightPrep, morningPrep, meals });
+      const details = toCalendarDetailsText(message);
 
       const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`🍽️ Meal Prep — ${nextDay}`)}&dates=${fmt(date)}/${fmt(end)}&details=${encodeURIComponent(details)}`;
       return { day, url, nextDay };

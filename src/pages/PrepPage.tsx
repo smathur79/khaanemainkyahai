@@ -4,6 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { PLANNER_MEAL_TYPES, DayOfWeek, DAYS_OF_WEEK } from '@/types/models';
 import { getMonday, formatDateKey } from '@/lib/dateUtils';
+import { buildPrepPlanMessage, toCalendarDetailsText } from '@/lib/calendarText';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Copy, Check, CalendarPlus } from 'lucide-react';
@@ -104,66 +105,30 @@ export default function PrepPage() {
   const needsThaw = allTomorrowRecipes.some(r => r.ingredients.some(i => /chicken|fish|meat|thaw|prawn/i.test(i)));
   const needsEarlyStart = allTomorrowRecipes.some(r => r.effort === 'weekend' || r.prepTimeMinutes > 30);
 
-  // Generate WhatsApp-friendly message
   const whatsappMessage = useMemo(() => {
-    const lines: string[] = [];
-    lines.push(`📋 *${tomorrowDay}'s Plan* (${tomorrowFormatted})`);
-    lines.push('');
-
-    // Night prep section
     const nightPrep: string[] = [];
-    if (needsSoak) nightPrep.push('• Soak lentils/beans tonight');
-    if (needsThaw) nightPrep.push('• Thaw meat/fish overnight');
-    if (nightRituals.length > 0) {
-      nightRituals.forEach(r => {
-        r.items.forEach(i => nightPrep.push(`• ${i.text}`));
-      });
-    }
-    if (nightPrep.length > 0) {
-      lines.push('🌙 *Night Prep*');
-      lines.push(...nightPrep);
-      lines.push('');
-    }
+    if (needsSoak) nightPrep.push('Soak lentils/beans tonight');
+    if (needsThaw) nightPrep.push('Thaw meat/fish overnight');
+    nightRituals.forEach(r => r.items.forEach(i => nightPrep.push(i.text)));
 
-    // Morning section
     const morningItems: string[] = [];
-    if (needsEarlyStart) morningItems.push('• Start prep early — some dishes take time');
-    if (morningRituals.length > 0) {
-      morningRituals.forEach(r => {
-        r.items.forEach(i => morningItems.push(`• ${i.text}`));
-      });
-    }
-    if (morningItems.length > 0) {
-      lines.push('☀️ *Morning*');
-      lines.push(...morningItems);
-      lines.push('');
-    }
+    if (needsEarlyStart) morningItems.push('Start prep early — some dishes take time');
+    morningRituals.forEach(r => r.items.forEach(i => morningItems.push(i.text)));
 
-    // Meal sections
-    for (const { meal, slot, recipes: mealRecipes } of tomorrowMeals) {
-      const emoji = MEAL_EMOJI[meal] || '🍽️';
-      const label = MEAL_LABELS[meal] || meal;
-      lines.push(`${emoji} *${label}*`);
-      if (mealRecipes.length > 0) {
-        mealRecipes.forEach(r => {
-          lines.push(`• ${r.title} (${r.prepTimeMinutes}m)`);
-        });
-      } else if (slot && slot.entryType !== 'cooked') {
-        lines.push(`• ${slot.entryType.replace('_', ' ')}`);
-      } else {
-        lines.push('• Not planned');
-      }
-      lines.push('');
-    }
-
-    // Notes
-    if (notes.trim()) {
-      lines.push('📝 *Notes*');
-      lines.push(notes.trim());
-      lines.push('');
-    }
-
-    return lines.join('\n');
+    return buildPrepPlanMessage({
+      dayLabel: tomorrowDay,
+      dateLabel: tomorrowFormatted,
+      nightPrep,
+      morningPrep: morningItems,
+      meals: tomorrowMeals.map(({ meal, slot, recipes: mealRecipes }) => ({
+        meal,
+        label: MEAL_LABELS[meal] || meal,
+        emoji: MEAL_EMOJI[meal] || '🍽️',
+        recipes: mealRecipes.map(r => ({ title: r.title, prepTimeMinutes: r.prepTimeMinutes })),
+        entryType: slot?.entryType,
+      })),
+      notes,
+    });
   }, [tomorrowMeals, nightRituals, morningRituals, needsSoak, needsThaw, needsEarlyStart, notes, tomorrowDay, tomorrowFormatted]);
 
   const handleCopy = () => {
@@ -189,7 +154,7 @@ export default function PrepPage() {
       return `${year}${month}${day}T${hours}${minutes}${seconds}`;
     };
 
-    const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`🍽️ Meal Prep — ${tomorrowDay} (${tomorrowFormatted})`)}&dates=${formatLocalCalendarDate(start)}/${formatLocalCalendarDate(end)}&details=${encodeURIComponent(whatsappMessage.replace(/\*/g, ''))}&add=${encodeURIComponent('shweta.mathur.82@gmail.com')}`;
+    const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`🍽️ Meal Prep — ${tomorrowDay} (${tomorrowFormatted})`)}&dates=${formatLocalCalendarDate(start)}/${formatLocalCalendarDate(end)}&details=${encodeURIComponent(toCalendarDetailsText(whatsappMessage))}&add=${encodeURIComponent('shweta.mathur.82@gmail.com')}`;
     window.open(url, '_blank');
     toast.success('Opening Google Calendar…');
   };

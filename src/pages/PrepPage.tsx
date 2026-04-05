@@ -51,12 +51,16 @@ export default function PrepPage() {
   const weekKey = formatDateKey(monday);
   const plan = weeklyPlans.find(p => p.weekStartDate === weekKey);
 
-  // Determine tomorrow
+  // Default to tomorrow
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
   const tomorrowDayIndex = (tomorrow.getDay() + 6) % 7;
-  const tomorrowDay: DayOfWeek = DAYS_OF_WEEK[tomorrowDayIndex];
-  const tomorrowFormatted = tomorrow.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+  const [selectedDayIndex, setSelectedDayIndex] = useState(tomorrowDayIndex);
+
+  const selectedDay: DayOfWeek = DAYS_OF_WEEK[selectedDayIndex];
+  const selectedDate = new Date(monday);
+  selectedDate.setDate(monday.getDate() + selectedDayIndex);
+  const selectedDateLabel = selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
 
   // Load rituals
   const loadRituals = useCallback(async () => {
@@ -83,27 +87,26 @@ export default function PrepPage() {
 
   useEffect(() => { loadRituals(); }, [loadRituals]);
 
-  const tomorrowSlots = useMemo(() => {
+  const selectedSlots = useMemo(() => {
     if (!plan) return [];
-    return mealSlots.filter(s => s.weeklyPlanId === plan.id && s.dayOfWeek === tomorrowDay);
-  }, [plan, mealSlots, tomorrowDay]);
+    return mealSlots.filter(s => s.weeklyPlanId === plan.id && s.dayOfWeek === selectedDay);
+  }, [plan, mealSlots, selectedDay]);
 
-  const tomorrowMeals = useMemo(() => {
+  const selectedMeals = useMemo(() => {
     return PLANNER_MEAL_TYPES.map(meal => {
-      const slot = tomorrowSlots.find(s => s.mealType === meal);
+      const slot = selectedSlots.find(s => s.mealType === meal);
       const slotRecipes = slot ? slot.recipeIds.map(id => recipes.find(r => r.id === id)).filter(Boolean) : [];
       return { meal, slot, recipes: slotRecipes as typeof recipes };
     });
-  }, [tomorrowSlots, recipes]);
+  }, [selectedSlots, recipes]);
 
   const nightRituals = rituals.filter(r => r.ritual_type === 'night');
   const morningRituals = rituals.filter(r => r.ritual_type === 'morning');
 
-  // Prep hints
-  const allTomorrowRecipes = tomorrowMeals.flatMap(m => m.recipes);
-  const needsSoak = allTomorrowRecipes.some(r => r.ingredients.some(i => /soak|dal|rajma|chana|chole|rice/i.test(i)));
-  const needsThaw = allTomorrowRecipes.some(r => r.ingredients.some(i => /chicken|fish|meat|thaw|prawn/i.test(i)));
-  const needsEarlyStart = allTomorrowRecipes.some(r => r.effort === 'weekend' || r.prepTimeMinutes > 30);
+  const allSelectedRecipes = selectedMeals.flatMap(m => m.recipes);
+  const needsSoak = allSelectedRecipes.some(r => r.ingredients.some(i => /soak|dal|rajma|chana|chole|rice/i.test(i)));
+  const needsThaw = allSelectedRecipes.some(r => r.ingredients.some(i => /chicken|fish|meat|thaw|prawn/i.test(i)));
+  const needsEarlyStart = allSelectedRecipes.some(r => r.effort === 'weekend' || r.prepTimeMinutes > 30);
 
   const whatsappMessage = useMemo(() => {
     const nightPrep: string[] = [];
@@ -116,11 +119,11 @@ export default function PrepPage() {
     morningRituals.forEach(r => r.items.forEach(i => morningItems.push(i.text)));
 
     return buildPrepPlanMessage({
-      dayLabel: tomorrowDay,
-      dateLabel: tomorrowFormatted,
+      dayLabel: selectedDay,
+      dateLabel: selectedDateLabel,
       nightPrep,
       morningPrep: morningItems,
-      meals: tomorrowMeals.map(({ meal, slot, recipes: mealRecipes }) => ({
+      meals: selectedMeals.map(({ meal, slot, recipes: mealRecipes }) => ({
         meal,
         label: MEAL_LABELS[meal] || meal,
         emoji: MEAL_EMOJI[meal] || '🍽️',
@@ -129,7 +132,7 @@ export default function PrepPage() {
       })),
       notes,
     });
-  }, [tomorrowMeals, nightRituals, morningRituals, needsSoak, needsThaw, needsEarlyStart, notes, tomorrowDay, tomorrowFormatted]);
+  }, [selectedMeals, nightRituals, morningRituals, needsSoak, needsThaw, needsEarlyStart, notes, selectedDay, selectedDateLabel]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(whatsappMessage);
@@ -139,29 +142,60 @@ export default function PrepPage() {
   };
 
   const handleAddToCalendar = () => {
-    const start = new Date();
-    start.setHours(21, 0, 0, 0);
-    const end = new Date(start);
+    // Prep event is the evening before the selected day at 9pm
+    const prepDate = new Date(selectedDate);
+    prepDate.setDate(prepDate.getDate() - 1);
+    prepDate.setHours(21, 0, 0, 0);
+    const end = new Date(prepDate);
     end.setMinutes(end.getMinutes() + 30);
 
-    const formatLocalCalendarDate = (date: Date) => {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      const hours = String(date.getHours()).padStart(2, '0');
-      const minutes = String(date.getMinutes()).padStart(2, '0');
-      const seconds = String(date.getSeconds()).padStart(2, '0');
-      return `${year}${month}${day}T${hours}${minutes}${seconds}`;
+    const fmt = (d: Date) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const hours = String(d.getHours()).padStart(2, '0');
+      const minutes = String(d.getMinutes()).padStart(2, '0');
+      return `${year}${month}${day}T${hours}${minutes}00`;
     };
 
-    const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`🍽️ Meal Prep — ${tomorrowDay} (${tomorrowFormatted})`)}&dates=${formatLocalCalendarDate(start)}/${formatLocalCalendarDate(end)}&details=${encodeURIComponent(toCalendarDetailsText(whatsappMessage))}&add=${encodeURIComponent('shweta.mathur.82@gmail.com')}`;
+    const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`🍽️ Meal Prep — ${selectedDay}`)}&dates=${fmt(prepDate)}/${fmt(end)}&details=${encodeURIComponent(toCalendarDetailsText(whatsappMessage))}&add=${encodeURIComponent('shweta.mathur.82@gmail.com')}`;
     window.open(url, '_blank');
     toast.success('Opening Google Calendar…');
   };
 
+  // Build day pill labels for the current week
+  const dayPills = DAYS_OF_WEEK.map((day, idx) => {
+    const date = new Date(monday);
+    date.setDate(monday.getDate() + idx);
+    const isToday = idx === (today.getDay() + 6) % 7;
+    const label = date.toLocaleDateString('en-US', { weekday: 'short' });
+    const dateNum = date.getDate();
+    return { day, idx, label, dateNum, isToday };
+  });
+
   return (
     <AppLayout>
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4 max-w-2xl mx-auto">
+        {/* Day picker */}
+        <div className="flex gap-1.5 overflow-x-auto pb-1">
+          {dayPills.map(({ day, idx, label, dateNum, isToday }) => (
+            <button
+              key={day}
+              onClick={() => setSelectedDayIndex(idx)}
+              className={`flex flex-col items-center px-3 py-2 rounded-xl text-xs font-medium transition-colors flex-shrink-0 ${
+                selectedDayIndex === idx
+                  ? 'bg-primary text-primary-foreground'
+                  : isToday
+                  ? 'bg-primary/10 text-primary'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              }`}
+            >
+              <span>{label}</span>
+              <span className="text-sm font-bold">{dateNum}</span>
+            </button>
+          ))}
+        </div>
+
         <Button onClick={handleCopy} className="w-full" size="lg">
           {copied ? <Check className="mr-2 h-5 w-5" /> : <Copy className="mr-2 h-5 w-5" />}
           {copied ? 'Copied!' : 'Copy for WhatsApp'}

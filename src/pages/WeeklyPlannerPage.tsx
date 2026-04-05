@@ -99,9 +99,11 @@ export default function WeeklyPlannerPage() {
       const nightPrep: string[] = [];
       if (needsSoak) nightPrep.push('Soak lentils/beans tonight');
       if (needsThaw) nightPrep.push('Thaw meat/fish overnight');
+      rituals.filter(r => r.ritual_type === 'night').forEach(r => r.items.forEach(i => nightPrep.push(i.text)));
 
       const morningPrep: string[] = [];
       if (needsEarlyStart) morningPrep.push('Start prep early — some dishes take time');
+      rituals.filter(r => r.ritual_type === 'morning').forEach(r => r.items.forEach(i => morningPrep.push(i.text)));
 
       const meals = PLANNER_MEAL_TYPES.map(meal => {
         const sr = getSlotRecipes(nextDay, meal);

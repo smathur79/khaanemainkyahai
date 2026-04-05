@@ -69,7 +69,7 @@ export default function WeeklyPlannerPage() {
 
   // Calendar sync dialog
   const [calSyncOpen, setCalSyncOpen] = useState(false);
-  const [calLinks, setCalLinks] = useState<{ day: DayOfWeek; nextDay: DayOfWeek; url: string }[]>([]);
+  const [calLinks, setCalLinks] = useState<{ day: DayOfWeek; nextDay: DayOfWeek; nextDayIndex: number; url: string }[]>([]);
 
   const openCalSync = () => {
     const fmt = (d: Date) => `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}T${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}00`;
@@ -121,8 +121,10 @@ export default function WeeklyPlannerPage() {
       const details = toCalendarDetailsText(message);
 
       const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`🍽️ Meal Prep — ${nextDay}`)}&dates=${fmt(date)}/${fmt(end)}&details=${encodeURIComponent(details)}`;
-      return { day, url, nextDay };
+      return { day, url, nextDay, nextDayIndex };
     });
+    // Sort so first entry is "Prep for Monday (Sunday night)", then Tuesday, ..., Sunday
+    links.sort((a, b) => a.nextDayIndex - b.nextDayIndex);
     setCalLinks(links);
     setCalSyncOpen(true);
   };

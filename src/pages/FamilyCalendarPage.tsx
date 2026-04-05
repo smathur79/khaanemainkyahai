@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useAppContext } from '@/context/AppContext';
 import { FamilyEvent, EventCategory, EVENT_CATEGORIES, DAYS_OF_WEEK, DayOfWeek } from '@/types/models';
 import { getMonday, formatWeekLabel, formatDateKey, addWeeks } from '@/lib/dateUtils';
+import { buildFamilyEventCalendarDetails } from '@/lib/calendarText';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -161,7 +162,7 @@ function parseTimeString(s: string): string | null {
 }
 
 // Build Google Calendar URL for a single event
-function buildGCalUrl(event: FamilyEvent, memberEmail?: string): string {
+function buildGCalUrl(event: FamilyEvent, memberEmail?: string, memberName?: string): string {
   const dateStr = event.eventDate.replace(/-/g, '');
   let dates: string;
   if (event.isAllDay) {
@@ -179,7 +180,8 @@ function buildGCalUrl(event: FamilyEvent, memberEmail?: string): string {
     dates,
   });
   if (event.location) params.set('location', event.location);
-  if (event.notes) params.set('details', event.notes);
+  const details = buildFamilyEventCalendarDetails(event, memberName);
+  if (details) params.set('details', details);
   if (memberEmail) params.set('add', memberEmail);
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
@@ -497,7 +499,7 @@ export default function FamilyCalendarPage() {
             <div className="flex gap-2 flex-wrap">
               {events.map(ev => {
                 const member = familyMembers.find(m => m.id === ev.familyMemberId);
-                const url = buildGCalUrl(ev, member?.calendarEmail || undefined);
+                const url = buildGCalUrl(ev, member?.calendarEmail || undefined, member?.name);
                 return (
                   <Button key={ev.id} variant="outline" size="sm" onClick={() => window.open(url, '_blank')}>
                     <ExternalLink className="h-3 w-3 mr-1" /> {ev.title} → GCal

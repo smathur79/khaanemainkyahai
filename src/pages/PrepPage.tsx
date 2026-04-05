@@ -7,7 +7,7 @@ import { getMonday, formatDateKey } from '@/lib/dateUtils';
 import { buildPrepPlanMessage, toCalendarDetailsText } from '@/lib/calendarText';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Copy, Check, CalendarPlus } from 'lucide-react';
+import { Copy, Check, CalendarPlus, ChevronLeft, ChevronRight } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
@@ -47,15 +47,20 @@ export default function PrepPage() {
   const [notes, setNotes] = useState('');
 
   const today = new Date();
-  const monday = getMonday(today);
-  const weekKey = formatDateKey(monday);
-  const plan = weeklyPlans.find(p => p.weekStartDate === weekKey);
+  const thisMonday = getMonday(today);
 
   // Default to tomorrow
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
   const tomorrowDayIndex = (tomorrow.getDay() + 6) % 7;
+
+  const [weekOffset, setWeekOffset] = useState(0); // 0 = this week, 1 = next week
   const [selectedDayIndex, setSelectedDayIndex] = useState(tomorrowDayIndex);
+
+  const monday = new Date(thisMonday);
+  monday.setDate(thisMonday.getDate() + weekOffset * 7);
+  const weekKey = formatDateKey(monday);
+  const plan = weeklyPlans.find(p => p.weekStartDate === weekKey);
 
   const selectedDay: DayOfWeek = DAYS_OF_WEEK[selectedDayIndex];
   const selectedDate = new Date(monday);
@@ -163,37 +168,50 @@ export default function PrepPage() {
     toast.success('Opening Google Calendar…');
   };
 
-  // Build day pill labels for the current week
   const dayPills = DAYS_OF_WEEK.map((day, idx) => {
     const date = new Date(monday);
     date.setDate(monday.getDate() + idx);
-    const isToday = idx === (today.getDay() + 6) % 7;
+    const isToday = weekOffset === 0 && idx === (today.getDay() + 6) % 7;
     const label = date.toLocaleDateString('en-US', { weekday: 'short' });
     const dateNum = date.getDate();
     return { day, idx, label, dateNum, isToday };
   });
 
+  const weekLabel = monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' – ' +
+    new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
   return (
     <AppLayout>
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4 max-w-2xl mx-auto">
-        {/* Day picker */}
-        <div className="flex gap-1.5 overflow-x-auto pb-1">
-          {dayPills.map(({ day, idx, label, dateNum, isToday }) => (
-            <button
-              key={day}
-              onClick={() => setSelectedDayIndex(idx)}
-              className={`flex flex-col items-center px-3 py-2 rounded-xl text-xs font-medium transition-colors flex-shrink-0 ${
-                selectedDayIndex === idx
-                  ? 'bg-primary text-primary-foreground'
-                  : isToday
-                  ? 'bg-primary/10 text-primary'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
-              }`}
-            >
-              <span>{label}</span>
-              <span className="text-sm font-bold">{dateNum}</span>
+        {/* Week nav + day picker */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <button onClick={() => setWeekOffset(w => Math.max(0, w - 1))} disabled={weekOffset === 0} className="p-1.5 rounded-lg disabled:opacity-30 hover:bg-muted transition-colors">
+              <ChevronLeft className="h-4 w-4" />
             </button>
-          ))}
+            <span className="text-xs text-muted-foreground font-medium">{weekLabel}</span>
+            <button onClick={() => setWeekOffset(w => Math.min(2, w + 1))} disabled={weekOffset >= 2} className="p-1.5 rounded-lg disabled:opacity-30 hover:bg-muted transition-colors">
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="flex gap-1.5 overflow-x-auto pb-1">
+            {dayPills.map(({ day, idx, label, dateNum, isToday }) => (
+              <button
+                key={day}
+                onClick={() => setSelectedDayIndex(idx)}
+                className={`flex flex-col items-center px-3 py-2 rounded-xl text-xs font-medium transition-colors flex-shrink-0 ${
+                  selectedDayIndex === idx
+                    ? 'bg-primary text-primary-foreground'
+                    : isToday
+                    ? 'bg-primary/10 text-primary'
+                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                }`}
+              >
+                <span>{label}</span>
+                <span className="text-sm font-bold">{dateNum}</span>
+              </button>
+            ))}
+          </div>
         </div>
 
         <Button onClick={handleCopy} className="w-full" size="lg">

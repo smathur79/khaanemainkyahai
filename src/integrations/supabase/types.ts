@@ -14,12 +14,83 @@ export type Database = {
   }
   public: {
     Tables: {
+      family_events: {
+        Row: {
+          category: Database["public"]["Enums"]["event_category"] | null
+          created_at: string | null
+          end_time: string | null
+          event_date: string
+          family_member_id: string | null
+          household_id: string
+          id: string
+          is_all_day: boolean | null
+          is_recurring: boolean | null
+          location: string | null
+          notes: string | null
+          recurrence_rule: string | null
+          start_time: string | null
+          title: string
+          travel_time_minutes: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          category?: Database["public"]["Enums"]["event_category"] | null
+          created_at?: string | null
+          end_time?: string | null
+          event_date: string
+          family_member_id?: string | null
+          household_id: string
+          id?: string
+          is_all_day?: boolean | null
+          is_recurring?: boolean | null
+          location?: string | null
+          notes?: string | null
+          recurrence_rule?: string | null
+          start_time?: string | null
+          title: string
+          travel_time_minutes?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["event_category"] | null
+          created_at?: string | null
+          end_time?: string | null
+          event_date?: string
+          family_member_id?: string | null
+          household_id?: string
+          id?: string
+          is_all_day?: boolean | null
+          is_recurring?: boolean | null
+          location?: string | null
+          notes?: string | null
+          recurrence_rule?: string | null
+          start_time?: string | null
+          title?: string
+          travel_time_minutes?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "family_events_family_member_id_fkey"
+            columns: ["family_member_id"]
+            isOneToOne: false
+            referencedRelation: "family_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "family_events_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       family_members: {
         Row: {
-          calendar_email: string
-          calendar_role: string
           created_at: string
           dislikes: string[]
+          email: string | null
           exclusions: string[]
           food_type: Database["public"]["Enums"]["food_type_pref"]
           household_id: string
@@ -29,14 +100,12 @@ export type Database = {
           name: string
           notes: string
           preferred_cuisines: string[]
-          receives_prep_sync: boolean
           spice_level: Database["public"]["Enums"]["spice_level"]
         }
         Insert: {
-          calendar_email?: string
-          calendar_role?: string
           created_at?: string
           dislikes?: string[]
+          email?: string | null
           exclusions?: string[]
           food_type?: Database["public"]["Enums"]["food_type_pref"]
           household_id: string
@@ -46,14 +115,12 @@ export type Database = {
           name: string
           notes?: string
           preferred_cuisines?: string[]
-          receives_prep_sync?: boolean
           spice_level?: Database["public"]["Enums"]["spice_level"]
         }
         Update: {
-          calendar_email?: string
-          calendar_role?: string
           created_at?: string
           dislikes?: string[]
+          email?: string | null
           exclusions?: string[]
           food_type?: Database["public"]["Enums"]["food_type_pref"]
           household_id?: string
@@ -63,7 +130,6 @@ export type Database = {
           name?: string
           notes?: string
           preferred_cuisines?: string[]
-          receives_prep_sync?: boolean
           spice_level?: Database["public"]["Enums"]["spice_level"]
         }
         Relationships: [
@@ -665,6 +731,13 @@ export type Database = {
       difficulty_level: "Easy" | "Medium" | "Hard"
       effort_level: "quick" | "medium" | "weekend"
       entry_type: "cooked" | "order_in" | "leftovers" | "eat_out"
+      event_category:
+        | "medical"
+        | "school"
+        | "activity"
+        | "social"
+        | "travel"
+        | "other"
       food_type_pref:
         | "Vegetarian"
         | "Eggetarian"
@@ -826,6 +899,14 @@ export const Constants = {
       difficulty_level: ["Easy", "Medium", "Hard"],
       effort_level: ["quick", "medium", "weekend"],
       entry_type: ["cooked", "order_in", "leftovers", "eat_out"],
+      event_category: [
+        "medical",
+        "school",
+        "activity",
+        "social",
+        "travel",
+        "other",
+      ],
       food_type_pref: [
         "Vegetarian",
         "Eggetarian",

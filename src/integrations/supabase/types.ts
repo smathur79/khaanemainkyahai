@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      jokes: {
+        Row: {
+          id: string
+          question: string
+          answer: string
+          active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          question: string
+          answer: string
+          active?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          question?: string
+          answer?: string
+          active?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
+      motivational_sayings: {
+        Row: {
+          id: string
+          text: string
+          source: string | null
+          active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          text: string
+          source?: string | null
+          active?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          text?: string
+          source?: string | null
+          active?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
       family_events: {
         Row: {
           category: Database["public"]["Enums"]["event_category"] | null

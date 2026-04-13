@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAppContext } from '@/context/AppContext';
 import { Card } from '@/components/ui/card';
@@ -9,32 +9,7 @@ import { getMonday, formatWeekLabel, formatDateKey } from '@/lib/dateUtils';
 import { DAYS_OF_WEEK, EVENT_CATEGORIES, EventCategory } from '@/types/models';
 import AppLayout from '@/components/AppLayout';
 import { motion } from 'framer-motion';
-
-// ── Jokes ─────────────────────────────────────────────────────────────────
-const JOKES = [
-  { q: "Why did the scarecrow win an award?", a: "Because he was outstanding in his field!" },
-  { q: "What do you call a fish without eyes?", a: "A fsh!" },
-  { q: "Why can't you give Elsa a balloon?", a: "Because she'll let it go!" },
-  { q: "What do you call cheese that isn't yours?", a: "Nacho cheese!" },
-  { q: "Why did the bicycle fall over?", a: "Because it was two-tired!" },
-  { q: "What do you call a sleeping dinosaur?", a: "A dino-snore!" },
-  { q: "Why did the math book look so sad?", a: "Because it had too many problems." },
-  { q: "What do elves learn in school?", a: "The elf-abet!" },
-  { q: "Why don't scientists trust atoms?", a: "Because they make up everything!" },
-  { q: "What do you call a bear with no teeth?", a: "A gummy bear!" },
-  { q: "How do you organize a space party?", a: "You planet!" },
-  { q: "What did the ocean say to the beach?", a: "Nothing, it just waved!" },
-  { q: "Why did the golfer bring two pairs of pants?", a: "In case he got a hole in one!" },
-  { q: "What do you call a fake noodle?", a: "An impasta!" },
-  { q: "Why did the tomato turn red?", a: "Because it saw the salad dressing!" },
-  { q: "What did the janitor say when he jumped out of the closet?", a: "Supplies!" },
-  { q: "Why do cows wear bells?", a: "Because their horns don't work!" },
-  { q: "What do you call a snowman with a six-pack?", a: "An abdominal snowman!" },
-  { q: "Why did the banana go to the doctor?", a: "Because it wasn't peeling well!" },
-  { q: "What do you call a dino with no imagination?", a: "A bronto-bore-us!" },
-  { q: "Why can't Elsa have a balloon?", a: "Because she'll let it go!" },
-  { q: "What did one wall say to the other?", a: "I'll meet you at the corner!" },
-];
+import { supabase } from '@/integrations/supabase/client';
 
 // ── Small Talk Topics ─────────────────────────────────────────────────────
 const SMALL_TALK = [
@@ -61,9 +36,10 @@ const SMALL_TALK = [
   "What's one thing you want to do before the end of the year?",
 ];
 
-function getDailyIndex(arr: unknown[], date: Date): number {
+function getDailyIndex(len: number, date: Date): number {
+  if (len === 0) return 0;
   const day = Math.floor(date.getTime() / (1000 * 60 * 60 * 24));
-  return day % arr.length;
+  return day % len;
 }
 
 function getCategoryEmoji(cat: EventCategory): string {
@@ -77,6 +53,9 @@ function formatTime(t: string | null): string {
   const hour = h % 12 || 12;
   return `${hour}:${String(m).padStart(2, '0')} ${ampm}`;
 }
+
+type Joke = { question: string; answer: string };
+type Saying = { text: string; source: string | null };
 
 // ── page ──────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
@@ -92,12 +71,31 @@ export default function DashboardPage() {
   const todayEvents = getEventsForDate(todayKey);
   const plannedMeals = mealSlots.filter(s => s.recipeIds.length > 0).length;
 
-  const jokeIdx = getDailyIndex(JOKES, today);
-  const joke = JOKES[jokeIdx];
-  const talkIdx = getDailyIndex(SMALL_TALK, new Date(today.getTime() + 86400000)); // offset by 1 so different from joke
+  const talkIdx = getDailyIndex(SMALL_TALK.length, new Date(today.getTime() + 86400000));
   const topic = SMALL_TALK[talkIdx];
 
   const [showJokeAnswer, setShowJokeAnswer] = useState(false);
+  const [jokes, setJokes] = useState<Joke[]>([]);
+  const [sayings, setSayings] = useState<Saying[]>([]);
+
+  useEffect(() => {
+    supabase
+      .from('jokes')
+      .select('question, answer')
+      .eq('active', true)
+      .order('created_at')
+      .then(({ data }) => { if (data) setJokes(data); });
+
+    supabase
+      .from('motivational_sayings')
+      .select('text, source')
+      .eq('active', true)
+      .order('created_at')
+      .then(({ data }) => { if (data) setSayings(data); });
+  }, []);
+
+  const joke = jokes.length > 0 ? jokes[getDailyIndex(jokes.length, today)] : null;
+  const saying = sayings.length > 0 ? sayings[getDailyIndex(sayings.length, new Date(today.getTime() + 2 * 86400000))] : null;
 
   return (
     <AppLayout>
@@ -131,26 +129,44 @@ export default function DashboardPage() {
           </Card>
         </Link>
 
-        {/* Joke of the Moment */}
-        <Card className="card-warm p-5 bg-amber-50/50 border-amber-100">
-          <div className="flex items-start gap-3">
-            <span className="text-2xl">😄</span>
-            <div className="flex-1">
-              <h3 className="text-sm font-semibold mb-1">Joke of the Moment</h3>
-              <p className="text-sm font-medium">{joke.q}</p>
-              {showJokeAnswer ? (
-                <p className="text-sm text-muted-foreground mt-2 italic">{joke.a}</p>
-              ) : (
-                <button
-                  onClick={() => setShowJokeAnswer(true)}
-                  className="text-xs text-primary hover:underline mt-2"
-                >
-                  Show answer
-                </button>
-              )}
+        {/* Motivational Saying */}
+        {saying && (
+          <Card className="card-warm p-5 bg-indigo-50/50 border-indigo-100">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">✨</span>
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold mb-2">Quote of the Day</h3>
+                <p className="text-sm leading-relaxed text-foreground">"{saying.text}"</p>
+                {saying.source && (
+                  <p className="text-xs text-muted-foreground mt-2">— {saying.source}</p>
+                )}
+              </div>
             </div>
-          </div>
-        </Card>
+          </Card>
+        )}
+
+        {/* Joke of the Moment */}
+        {joke && (
+          <Card className="card-warm p-5 bg-amber-50/50 border-amber-100">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">😄</span>
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold mb-1">Joke of the Moment</h3>
+                <p className="text-sm font-medium">{joke.question}</p>
+                {showJokeAnswer ? (
+                  <p className="text-sm text-muted-foreground mt-2 italic">{joke.answer}</p>
+                ) : (
+                  <button
+                    onClick={() => setShowJokeAnswer(true)}
+                    className="text-xs text-primary hover:underline mt-2"
+                  >
+                    Show answer
+                  </button>
+                )}
+              </div>
+            </div>
+          </Card>
+        )}
 
         {/* Small Talk Topic */}
         <Card className="card-warm p-5 bg-orange-50/50 border-orange-100">

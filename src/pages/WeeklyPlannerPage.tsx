@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { DAYS_OF_WEEK, PLANNER_MEAL_TYPES, DayOfWeek, MealType } from '@/types/models';
 import { getMonday, formatWeekLabel, formatDateKey, addWeeks } from '@/lib/dateUtils';
 import { buildPrepPlanMessage, toCalendarDetailsText } from '@/lib/calendarText';
+import { useDailyQuote, formatQuoteFooter } from '@/hooks/useDailyQuote';
 import { getRecommendations } from '@/lib/recommendations';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -48,6 +49,7 @@ export default function WeeklyPlannerPage() {
     finalizePlan, swipeDecisions, household, clearWeek, copyLastWeek, addRecipe, refreshData,
   } = useAppContext();
   const { householdId } = useAuth();
+  const dailyQuote = useDailyQuote();
 
   const [currentMonday, setCurrentMonday] = useState(() => getMonday(new Date()));
   const weekKey = formatDateKey(currentMonday);
@@ -118,7 +120,7 @@ export default function WeeklyPlannerPage() {
       });
 
       const message = buildPrepPlanMessage({ dayLabel: nextDay, dateLabel, nightPrep, morningPrep, meals });
-      const details = toCalendarDetailsText(message);
+      const details = toCalendarDetailsText(message + formatQuoteFooter(dailyQuote));
 
       const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`🍽️ Meal Prep — ${nextDay}`)}&dates=${fmt(date)}/${fmt(end)}&details=${encodeURIComponent(details)}`;
       return { day, url, nextDay, nextDayIndex };
@@ -324,8 +326,8 @@ export default function WeeklyPlannerPage() {
         lines.push('');
       }
     }
-    return lines.join('\n');
-  }, [slots, recipes, currentMonday, household]);
+    return lines.join('\n') + formatQuoteFooter(dailyQuote);
+  }, [slots, recipes, currentMonday, household, dailyQuote]);
 
   const handleCopyWeek = () => {
     navigator.clipboard.writeText(weekWhatsApp);

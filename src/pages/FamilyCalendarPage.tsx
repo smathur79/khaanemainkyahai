@@ -18,6 +18,7 @@ import {
 import AppLayout from '@/components/AppLayout';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { useDailyQuote, formatQuoteFooter } from '@/hooks/useDailyQuote';
 
 // ── constants ──────────────────────────────────────────────────────────────
 const MEAL_EMOJI: Record<string, string> = {
@@ -223,6 +224,7 @@ export default function FamilyCalendarPage() {
     getEventsForDate, getEventsForWeek, getWeeklyPlan, getMealSlots,
   } = useAppContext();
 
+  const dailyQuote = useDailyQuote();
   const [currentMonday, setCurrentMonday] = useState(() => getMonday(new Date()));
   const weekKey = formatDateKey(currentMonday);
 
@@ -392,7 +394,7 @@ export default function FamilyCalendarPage() {
       }
       text += '\n';
     }
-    return text.trim();
+    return text.trim() + formatQuoteFooter(dailyQuote);
   };
 
   const handleWhatsAppCopy = async () => {

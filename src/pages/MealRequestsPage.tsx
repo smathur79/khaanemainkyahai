@@ -12,6 +12,7 @@ import { Send, Check, X, Loader2, Heart, Calendar, Sparkles, ClipboardList, Copy
 import AppLayout from '@/components/AppLayout';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { useDailyQuote, formatQuoteFooter } from '@/hooks/useDailyQuote';
 
 interface MealRequest {
   id: string;
@@ -40,6 +41,7 @@ function FamilyMemberView() {
   const [submitting, setSubmitting] = useState(false);
   const [requests, setRequests] = useState<MealRequest[]>([]);
   const [copied, setCopied] = useState(false);
+  const dailyQuote = useDailyQuote();
 
   const monday = getMonday(new Date());
   const weekKey = formatDateKey(monday);
@@ -102,8 +104,8 @@ function FamilyMemberView() {
       lines.push(sr.length > 0 ? sr.map(t => `• ${t}`).join('\n') : '• Not planned');
       lines.push('');
     }
-    return lines.join('\n');
-  }, [tomorrowSlots, recipes, rituals, tomorrowDay, tomorrowFormatted]);
+    return lines.join('\n') + formatQuoteFooter(dailyQuote);
+  }, [tomorrowSlots, recipes, rituals, tomorrowDay, tomorrowFormatted, dailyQuote]);
 
   return (
     <AppLayout>

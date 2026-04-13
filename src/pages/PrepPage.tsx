@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { PLANNER_MEAL_TYPES, DayOfWeek, DAYS_OF_WEEK } from '@/types/models';
 import { getMonday, formatDateKey } from '@/lib/dateUtils';
 import { buildPrepPlanMessage, toCalendarDetailsText } from '@/lib/calendarText';
+import { useDailyQuote, formatQuoteFooter } from '@/hooks/useDailyQuote';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Copy, Check, CalendarPlus, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -45,6 +46,7 @@ export default function PrepPage() {
   const [rituals, setRituals] = useState<Ritual[]>([]);
   const [copied, setCopied] = useState(false);
   const [notes, setNotes] = useState('');
+  const dailyQuote = useDailyQuote();
 
   const today = new Date();
   const thisMonday = getMonday(today);
@@ -123,7 +125,7 @@ export default function PrepPage() {
     if (needsEarlyStart) morningItems.push('Start prep early — some dishes take time');
     morningRituals.forEach(r => r.items.forEach(i => morningItems.push(i.text)));
 
-    return buildPrepPlanMessage({
+    const message = buildPrepPlanMessage({
       dayLabel: selectedDay,
       dateLabel: selectedDateLabel,
       nightPrep,
@@ -137,7 +139,8 @@ export default function PrepPage() {
       })),
       notes,
     });
-  }, [selectedMeals, nightRituals, morningRituals, needsSoak, needsThaw, needsEarlyStart, notes, selectedDay, selectedDateLabel]);
+    return message + formatQuoteFooter(dailyQuote);
+  }, [selectedMeals, nightRituals, morningRituals, needsSoak, needsThaw, needsEarlyStart, notes, selectedDay, selectedDateLabel, dailyQuote]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(whatsappMessage);

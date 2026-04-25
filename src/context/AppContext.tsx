@@ -277,7 +277,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // ── family members ─────────────────────────────────────
   const addFamilyMember = useCallback(async (member: Omit<FamilyMember, 'id' | 'householdId'>) => {
     if (!householdId) return;
-    await supabase.from('family_members').insert({
+    const newMember = {
       household_id: householdId,
       name: member.name,
       label: member.label as any,
@@ -291,7 +291,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       calendar_role: member.calendarRole,
       calendar_email: member.calendarEmail,
       receives_prep_sync: member.receivesPrepSync,
-    });
+    };
+    await supabase.from('family_members').insert(newMember as any);
     await refreshData();
   }, [householdId, refreshData]);
 

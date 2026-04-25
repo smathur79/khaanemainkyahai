@@ -14,54 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      jokes: {
-        Row: {
-          id: string
-          question: string
-          answer: string
-          active: boolean
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          question: string
-          answer: string
-          active?: boolean
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          question?: string
-          answer?: string
-          active?: boolean
-          created_at?: string
-        }
-        Relationships: []
-      }
-      motivational_sayings: {
-        Row: {
-          id: string
-          text: string
-          source: string | null
-          active: boolean
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          text: string
-          source?: string | null
-          active?: boolean
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          text?: string
-          source?: string | null
-          active?: boolean
-          created_at?: string
-        }
-        Relationships: []
-      }
       family_events: {
         Row: {
           category: Database["public"]["Enums"]["event_category"] | null
@@ -249,6 +201,30 @@ export type Database = {
         }
         Relationships: []
       }
+      jokes: {
+        Row: {
+          active: boolean
+          answer: string
+          created_at: string
+          id: string
+          question: string
+        }
+        Insert: {
+          active?: boolean
+          answer: string
+          created_at?: string
+          id?: string
+          question: string
+        }
+        Update: {
+          active?: boolean
+          answer?: string
+          created_at?: string
+          id?: string
+          question?: string
+        }
+        Relationships: []
+      }
       meal_requests: {
         Row: {
           created_at: string
@@ -298,6 +274,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      motivational_sayings: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          source: string | null
+          text: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          source?: string | null
+          text: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          source?: string | null
+          text?: string
+        }
+        Relationships: []
       }
       prep_notes: {
         Row: {

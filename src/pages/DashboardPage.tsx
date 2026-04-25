@@ -4,7 +4,7 @@ import { useAppContext } from '@/context/AppContext';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowRight, ClipboardList, Settings, UtensilsCrossed } from 'lucide-react';
+import { ArrowRight, ClipboardList, RefreshCw, Settings, UtensilsCrossed } from 'lucide-react';
 import { getMonday, formatWeekLabel, formatDateKey } from '@/lib/dateUtils';
 import { DAYS_OF_WEEK, EVENT_CATEGORIES, EventCategory } from '@/types/models';
 import AppLayout from '@/components/AppLayout';
@@ -77,6 +77,9 @@ export default function DashboardPage() {
   const [showJokeAnswer, setShowJokeAnswer] = useState(false);
   const [jokes, setJokes] = useState<Joke[]>([]);
   const [sayings, setSayings] = useState<Saying[]>([]);
+  const [jokeOffset, setJokeOffset] = useState(0);
+  const [sayingOffset, setSayingOffset] = useState(0);
+  const [topicOffset, setTopicOffset] = useState(0);
 
   useEffect(() => {
     supabase
@@ -94,8 +97,8 @@ export default function DashboardPage() {
       .then(({ data }) => { if (data) setSayings(data); });
   }, []);
 
-  const joke = jokes.length > 0 ? jokes[getDailyIndex(jokes.length, today)] : null;
-  const saying = sayings.length > 0 ? sayings[getDailyIndex(sayings.length, new Date(today.getTime() + 2 * 86400000))] : null;
+  const joke = jokes.length > 0 ? jokes[(getDailyIndex(jokes.length, today) + jokeOffset) % jokes.length] : null;
+  const saying = sayings.length > 0 ? sayings[(getDailyIndex(sayings.length, new Date(today.getTime() + 2 * 86400000)) + sayingOffset) % sayings.length] : null;
 
   return (
     <AppLayout>
@@ -135,7 +138,12 @@ export default function DashboardPage() {
             <div className="flex items-start gap-3">
               <span className="text-2xl">✨</span>
               <div className="flex-1">
-                <h3 className="text-sm font-semibold mb-2">Quote of the Day</h3>
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <h3 className="text-sm font-semibold">Quote of the Day</h3>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSayingOffset(value => value + 1)} aria-label="Show next quote">
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
+                </div>
                 <p className="text-sm leading-relaxed text-foreground">"{saying.text}"</p>
                 {saying.source && (
                   <p className="text-xs text-muted-foreground mt-2">— {saying.source}</p>
@@ -151,7 +159,21 @@ export default function DashboardPage() {
             <div className="flex items-start gap-3">
               <span className="text-2xl">😄</span>
               <div className="flex-1">
-                <h3 className="text-sm font-semibold mb-1">Joke of the Moment</h3>
+                <div className="mb-1 flex items-center justify-between gap-3">
+                  <h3 className="text-sm font-semibold">Joke of the Moment</h3>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => {
+                      setJokeOffset(value => value + 1);
+                      setShowJokeAnswer(false);
+                    }}
+                    aria-label="Show next joke"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
+                </div>
                 <p className="text-sm font-medium">{joke.question}</p>
                 {showJokeAnswer ? (
                   <p className="text-sm text-muted-foreground mt-2 italic">{joke.answer}</p>
@@ -173,8 +195,13 @@ export default function DashboardPage() {
           <div className="flex items-start gap-3">
             <span className="text-2xl">💬</span>
             <div>
-              <h3 className="text-sm font-semibold mb-1">Dinner Table Topic</h3>
-              <p className="text-sm text-muted-foreground italic">"{topic}"</p>
+              <div className="mb-1 flex items-center justify-between gap-3">
+                <h3 className="text-sm font-semibold">Dinner Table Topic</h3>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setTopicOffset(value => value + 1)} aria-label="Show next dinner table topic">
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+              </div>
+              <p className="text-sm text-muted-foreground italic">"{SMALL_TALK[(talkIdx + topicOffset) % SMALL_TALK.length]}"</p>
             </div>
           </div>
         </Card>

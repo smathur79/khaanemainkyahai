@@ -6,7 +6,14 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { DAYS_OF_WEEK, PLANNER_MEAL_TYPES, DayOfWeek, MealType } from '@/types/models';
+import {
+  DAYS_OF_WEEK,
+  PLANNER_MEAL_TYPES,
+  DayOfWeek,
+  MealType,
+  MEAL_TYPE_EMOJI,
+  MEAL_TYPE_LABELS,
+} from '@/types/models';
 import { getMonday, formatDateKey, formatWeekLabel } from '@/lib/dateUtils';
 import { Send, Check, X, Loader2, Heart, Calendar, Sparkles, ClipboardList, Copy } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
@@ -25,9 +32,6 @@ interface MealRequest {
   created_at: string;
   created_by_user_id: string;
 }
-
-const MEAL_EMOJI: Record<string, string> = { breakfast: '🍳', lunch: '🍚', snack: '🍪', dinner: '🍽️' };
-const MEAL_LABELS: Record<string, string> = { breakfast: 'Breakfast', lunch: 'Lunch', snack: 'Snack', dinner: 'Dinner' };
 
 // ════════════════════════════════════════════════════════════════════════════
 // FAMILY MEMBER VIEW — simple: request, calendar, and prep
@@ -100,7 +104,7 @@ function FamilyMemberView() {
     for (const meal of PLANNER_MEAL_TYPES) {
       const slot = tomorrowSlots.find(s => s.mealType === meal);
       const sr = slot ? slot.recipeIds.map(id => recipes.find(r => r.id === id)?.title).filter(Boolean) : [];
-      lines.push(`${MEAL_EMOJI[meal]} *${MEAL_LABELS[meal]}*`);
+      lines.push(`${MEAL_TYPE_EMOJI[meal]} *${MEAL_TYPE_LABELS[meal]}*`);
       lines.push(sr.length > 0 ? sr.map(t => `• ${t}`).join('\n') : '• Not planned');
       lines.push('');
     }
@@ -180,7 +184,7 @@ function FamilyMemberView() {
                           const slot = daySlots.find(s => s.mealType === meal);
                           if (!slot || slot.recipeIds.length === 0) return null;
                           const titles = slot.recipeIds.map(id => recipes.find(r => r.id === id)?.title).filter(Boolean);
-                          return <div key={meal} className="text-sm"><span className="text-muted-foreground">{MEAL_EMOJI[meal]}</span> {titles.join(', ')}</div>;
+                          return <div key={meal} className="text-sm"><span className="text-muted-foreground">{MEAL_TYPE_EMOJI[meal]}</span> {titles.join(', ')}</div>;
                         })}</div>
                       </div>
                     );

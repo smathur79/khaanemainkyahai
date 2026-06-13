@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/context/AppContext';
-import { MealType, PLANNER_MEAL_TYPES, DAYS_OF_WEEK } from '@/types/models';
+import { MealType, PLANNER_MEAL_TYPES, DAYS_OF_WEEK, MEAL_TYPE_SHORT_LABELS } from '@/types/models';
 import { getMonday, formatDateKey } from '@/lib/dateUtils';
 import { getRecommendations } from '@/lib/recommendations';
 import { Card } from '@/components/ui/card';
@@ -60,13 +60,13 @@ export default function ShortlistPage() {
               className="capitalize"
               onClick={() => { setMealFilter(m); setCurrentIndex(0); }}
             >
-              {m}
+              {MEAL_TYPE_SHORT_LABELS[m]}
             </Button>
           ))}
         </div>
 
         <div className="text-center text-xs text-muted-foreground">
-          <Check className="inline h-3 w-3 mr-1" /> {likedCount} shortlisted for {mealFilter}
+          <Check className="inline h-3 w-3 mr-1" /> {likedCount} shortlisted for {MEAL_TYPE_SHORT_LABELS[mealFilter]}
         </div>
 
         <div className="relative h-[400px] flex items-center justify-center">

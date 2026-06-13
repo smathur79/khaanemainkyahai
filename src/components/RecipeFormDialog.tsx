@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAppContext } from '@/context/AppContext';
-import { Recipe, MealType, RecipeFoodType, HealthTag, Effort, MoodTag, Difficulty, MEAL_TYPES, CUISINES, RECIPE_FOOD_TYPES, HEALTH_TAGS, EFFORT_LEVELS, MOOD_TAGS } from '@/types/models';
+import { Recipe, MealType, RecipeFoodType, HealthTag, Effort, MoodTag, Difficulty, MEAL_TYPES, MEAL_TYPE_LABELS, CUISINES, RECIPE_FOOD_TYPES, HEALTH_TAGS, EFFORT_LEVELS, MOOD_TAGS } from '@/types/models';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -137,7 +137,7 @@ export default function RecipeFormDialog({ open, onOpenChange, recipe }: Props) 
             <div className="flex flex-wrap gap-1.5">
               {MEAL_TYPES.map(mt => (
                 <Badge key={mt} variant={mealTypes.includes(mt) ? 'default' : 'outline'} className="cursor-pointer capitalize" onClick={() => toggleMealType(mt)}>
-                  {mt}
+                  {MEAL_TYPE_LABELS[mt]}
                 </Badge>
               ))}
             </div>

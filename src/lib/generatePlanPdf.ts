@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { DAYS_OF_WEEK, PLANNER_MEAL_TYPES, DayOfWeek, MealType, Recipe, WeeklyMealSlot } from '@/types/models';
+import { DAYS_OF_WEEK, PLANNER_MEAL_TYPES, DayOfWeek, MealType, MEAL_TYPE_SHORT_LABELS, Recipe, WeeklyMealSlot } from '@/types/models';
 
 interface RitualForPdf {
   title: string;
@@ -10,14 +10,16 @@ interface RitualForPdf {
 
 interface GeneratePdfOptions {
   weekLabel: string;
+  weekStartDate: Date;
   householdName: string;
   slots: WeeklyMealSlot[];
   recipes: Recipe[];
   rituals?: RitualForPdf[];
 }
 
-export function generateWeeklyPlanPdf({ weekLabel, householdName, slots, recipes, rituals }: GeneratePdfOptions) {
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+export function generateWeeklyPlanPdf({ weekLabel, weekStartDate, householdName, slots, recipes, rituals }: GeneratePdfOptions) {
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
 
   const getSlotText = (day: DayOfWeek, meal: MealType): string => {
     const slot = slots.find(s => s.dayOfWeek === day && s.mealType === meal);
@@ -40,26 +42,25 @@ export function generateWeeklyPlanPdf({ weekLabel, householdName, slots, recipes
 
   // Warm header bar
   doc.setFillColor(255, 183, 77);
-  doc.rect(0, 0, 210, 4, 'F');
+  doc.rect(0, 0, pageWidth, 4, 'F');
 
   // Title
   doc.setFontSize(18);
   doc.setTextColor(40, 40, 40);
-  doc.text(`${householdName} — Weekly Meal Plan`, 105, 18, { align: 'center' });
+  doc.text(`${householdName} — Weekly Meal Plan`, pageWidth / 2, 18, { align: 'center' });
   doc.setFontSize(11);
   doc.setTextColor(100, 100, 100);
-  doc.text(weekLabel, 105, 25, { align: 'center' });
+  doc.text(weekLabel, pageWidth / 2, 25, { align: 'center' });
 
-  // Meal plan table with snack column
-  const mealLabels: Record<string, string> = {
-    breakfast: 'Breakfast',
-    lunch: 'Lunch',
-    snack: 'Snack',
-    dinner: 'Dinner',
+  const getDateLabel = (dayIndex: number) => {
+    const date = new Date(weekStartDate);
+    date.setDate(weekStartDate.getDate() + dayIndex);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
-  const head = [['Day', ...PLANNER_MEAL_TYPES.map(m => mealLabels[m] || m)]];
-  const body = DAYS_OF_WEEK.map(day => [
+  const head = [['Date', 'Day', ...PLANNER_MEAL_TYPES.map(m => MEAL_TYPE_SHORT_LABELS[m] || m)]];
+  const body = DAYS_OF_WEEK.map((day, dayIndex) => [
+    getDateLabel(dayIndex),
     day,
     ...PLANNER_MEAL_TYPES.map(meal => getSlotText(day, meal)),
   ]);
@@ -73,28 +74,26 @@ export function generateWeeklyPlanPdf({ weekLabel, householdName, slots, recipes
       textColor: [30, 30, 30],
       lineColor: [180, 180, 180],
       lineWidth: 0.3,
-      fontSize: 8,
-      cellPadding: 3,
+      fontSize: 6,
+      cellPadding: 1.5,
+      overflow: 'linebreak',
     },
     headStyles: {
       fillColor: [245, 245, 245],
       textColor: [40, 40, 40],
       fontStyle: 'bold',
-      fontSize: 9,
+      fontSize: 7,
       halign: 'center',
     },
     bodyStyles: {
       valign: 'top',
     },
     columnStyles: {
-      0: { fontStyle: 'bold', cellWidth: 22 },
-      1: { cellWidth: 44 },
-      2: { cellWidth: 44 },
-      3: { cellWidth: 36 },
-      4: { cellWidth: 44 },
+      0: { fontStyle: 'bold', cellWidth: 16 },
+      1: { fontStyle: 'bold', cellWidth: 20 },
     },
     alternateRowStyles: { fillColor: [250, 250, 250] },
-    margin: { left: 10, right: 10 },
+    margin: { left: 8, right: 8 },
   });
 
   // Get the Y position after the table
@@ -112,7 +111,7 @@ export function generateWeeklyPlanPdf({ weekLabel, householdName, slots, recipes
 
     doc.setFontSize(12);
     doc.setTextColor(40, 40, 40);
-    doc.text('Daily Rituals', 105, currentY, { align: 'center' });
+    doc.text('Daily Rituals', pageWidth / 2, currentY, { align: 'center' });
     currentY += 6;
 
     const morningRituals = rituals.filter(r => r.ritual_type === 'morning');
@@ -173,7 +172,7 @@ export function generateWeeklyPlanPdf({ weekLabel, householdName, slots, recipes
   const pageHeight = doc.internal.pageSize.getHeight();
   doc.setFontSize(7);
   doc.setTextColor(170, 170, 170);
-  doc.text('Family Planner', 105, pageHeight - 8, { align: 'center' });
+  doc.text('Family Planner', pageWidth / 2, pageHeight - 8, { align: 'center' });
 
   doc.save(`meal-plan-${weekLabel.replace(/[^a-zA-Z0-9]/g, '-')}.pdf`);
 }

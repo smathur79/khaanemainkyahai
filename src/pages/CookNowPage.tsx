@@ -1,6 +1,15 @@
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/context/AppContext';
-import { Recipe, CUISINES, RECIPE_FOOD_TYPES, DAYS_OF_WEEK, PLANNER_MEAL_TYPES, DayOfWeek } from '@/types/models';
+import {
+  Recipe,
+  CUISINES,
+  RECIPE_FOOD_TYPES,
+  DAYS_OF_WEEK,
+  PLANNER_MEAL_TYPES,
+  DayOfWeek,
+  MEAL_TYPE_EMOJI,
+  MEAL_TYPE_LABELS,
+} from '@/types/models';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -82,13 +91,6 @@ export default function CookNowPage() {
     setShowDetail(true);
   };
 
-  const mealIcon = (meal: string) => {
-    if (meal === 'breakfast') return '🌅';
-    if (meal === 'lunch') return '☀️';
-    if (meal === 'dinner') return '🌙';
-    return '🍽️';
-  };
-
   return (
     <AppLayout>
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-2xl mx-auto">
@@ -120,11 +122,11 @@ export default function CookNowPage() {
                       onClick={() => openDetail(recipe)}
                     >
                       <div className="flex items-center gap-3">
-                        <span className="text-xl shrink-0">{mealIcon(meal)}</span>
+                        <span className="text-xl shrink-0">{MEAL_TYPE_EMOJI[meal]}</span>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-0.5">
-                            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground capitalize">
-                              {meal}
+                            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                              {MEAL_TYPE_LABELS[meal]}
                             </span>
                           </div>
                           <div className="font-semibold text-sm">{recipe.title}</div>

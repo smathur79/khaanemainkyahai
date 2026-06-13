@@ -393,17 +393,57 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // ── weekly plans ───────────────────────────────────────
   const createWeeklyPlan = useCallback(async (weekStartDate: string) => {
-    if (!householdId) return '';
+    if (!householdId) throw new Error('No household is loaded for this session.');
     const existing = state.weeklyPlans.find(p => p.weekStartDate === weekStartDate);
-    if (existing) return existing.id;
+    if (existing) {
+      const existingKeys = new Set(
+        state.mealSlots
+          .filter(s => s.weeklyPlanId === existing.id)
+          .map(s => `${s.dayOfWeek}-${s.mealType}`)
+      );
+      const missingSlots = [];
+      for (const day of DAYS_OF_WEEK) {
+        for (const meal of PLANNER_MEAL_TYPES) {
+          if (!existingKeys.has(`${day}-${meal}`)) {
+            missingSlots.push({
+              weekly_plan_id: existing.id,
+              day_of_week: day as any,
+              meal_type: meal as any,
+              entry_type: 'cooked' as const,
+              notes: '',
+            });
+          }
+        }
+      }
+      if (missingSlots.length > 0) {
+        const { error } = await supabase
+          .from('weekly_meal_slots')
+          .upsert(missingSlots, { onConflict: 'weekly_plan_id,day_of_week,meal_type' });
+        if (error) throw new Error(error.message);
+        await refreshData();
+      }
+      return existing.id;
+    }
 
-    const { data: plan } = await supabase.from('weekly_plans').insert({
+    const { data: plan, error: planError } = await supabase.from('weekly_plans').insert({
       household_id: householdId,
       week_start_date: weekStartDate,
       status: 'draft' as const,
     }).select().single();
 
-    if (!plan) return '';
+    if (planError) throw new Error(planError.message);
+    if (!plan) {
+      const { data: recoveredPlan, error: recoverError } = await supabase
+        .from('weekly_plans')
+        .select('id')
+        .eq('household_id', householdId)
+        .eq('week_start_date', weekStartDate)
+        .maybeSingle();
+
+      if (recoverError) throw new Error(recoverError.message);
+      if (recoveredPlan?.id) return recoveredPlan.id;
+      throw new Error('Could not create weekly plan. Check that this session has planner access.');
+    }
 
     // Create empty slots
     const slots = [];
@@ -418,10 +458,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         });
       }
     }
-    await supabase.from('weekly_meal_slots').insert(slots);
+    const { error: slotsError } = await supabase.from('weekly_meal_slots').insert(slots);
+    if (slotsError) throw new Error(slotsError.message);
     await refreshData();
     return plan.id;
-  }, [householdId, state.weeklyPlans, refreshData]);
+  }, [householdId, state.weeklyPlans, state.mealSlots, refreshData]);
 
   const getWeeklyPlan = useCallback((weekStartDate: string) => {
     return state.weeklyPlans.find(p => p.weekStartDate === weekStartDate);
@@ -431,9 +472,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return state.mealSlots.filter(s => s.weeklyPlanId === planId);
   }, [state.mealSlots]);
 
+  const ensureMealSlot = useCallback(async (planId: string, day: DayOfWeek, meal: MealType) => {
+    const existing = state.mealSlots.find(s => s.weeklyPlanId === planId && s.dayOfWeek === day && s.mealType === meal);
+    if (existing) return existing;
+
+    const { data: slot } = await supabase
+      .from('weekly_meal_slots')
+      .upsert({
+        weekly_plan_id: planId,
+        day_of_week: day as any,
+        meal_type: meal as any,
+        entry_type: 'cooked' as const,
+        notes: '',
+      }, { onConflict: 'weekly_plan_id,day_of_week,meal_type' })
+      .select()
+      .single();
+
+    return slot ? toSlot(slot, []) : null;
+  }, [state.mealSlots]);
+
   // ── slot manipulation ─────────────────────────────────
   const setMealSlot = useCallback(async (planId: string, day: DayOfWeek, meal: MealType, recipeIds: string[], notes?: string) => {
-    const slot = state.mealSlots.find(s => s.weeklyPlanId === planId && s.dayOfWeek === day && s.mealType === meal);
+    const slot = await ensureMealSlot(planId, day, meal);
     if (!slot) return;
 
     // Delete existing items
@@ -455,10 +515,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     await refreshData();
-  }, [state.mealSlots, state.recipes, refreshData]);
+  }, [ensureMealSlot, state.recipes, refreshData]);
 
   const addRecipeToSlot = useCallback(async (planId: string, day: DayOfWeek, meal: MealType, recipeId: string) => {
-    const slot = state.mealSlots.find(s => s.weeklyPlanId === planId && s.dayOfWeek === day && s.mealType === meal);
+    const slot = await ensureMealSlot(planId, day, meal);
     if (!slot || slot.recipeIds.includes(recipeId)) return;
 
     await supabase.from('weekly_meal_slot_items').insert({
@@ -468,7 +528,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       sort_order: slot.items.length,
     });
     await refreshData();
-  }, [state.mealSlots, state.recipes, refreshData]);
+  }, [ensureMealSlot, state.recipes, refreshData]);
 
   const removeRecipeFromSlot = useCallback(async (planId: string, day: DayOfWeek, meal: MealType, recipeId: string) => {
     const slot = state.mealSlots.find(s => s.weeklyPlanId === planId && s.dayOfWeek === day && s.mealType === meal);

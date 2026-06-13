@@ -3,7 +3,15 @@ import { ChevronUp, ChevronDown, Search, MessageSquare } from 'lucide-react';
 import { useAppContext } from '@/context/AppContext';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { DAYS_OF_WEEK, PLANNER_MEAL_TYPES, DayOfWeek, MealType } from '@/types/models';
+import {
+  DAYS_OF_WEEK,
+  PLANNER_MEAL_TYPES,
+  DayOfWeek,
+  MealType,
+  MEAL_TYPE_EMOJI,
+  MEAL_TYPE_LABELS,
+  MEAL_TYPE_SHORT_LABELS,
+} from '@/types/models';
 import { getMonday, formatWeekLabel, formatDateKey, addWeeks } from '@/lib/dateUtils';
 import { buildPrepPlanMessage, toCalendarDetailsText } from '@/lib/calendarText';
 import { useDailyQuote, formatQuoteFooter } from '@/hooks/useDailyQuote';
@@ -20,20 +28,6 @@ import { parseWeeklyMenuText } from '@/lib/weeklyMenuImport';
 import AppLayout from '@/components/AppLayout';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-
-const MEAL_EMOJI: Record<string, string> = {
-  breakfast: '🍳',
-  lunch: '🍚',
-  snack: '🍪',
-  dinner: '🍽️',
-};
-
-const MEAL_LABELS: Record<string, string> = {
-  breakfast: 'Breakfast',
-  lunch: 'Lunch',
-  snack: 'Snack',
-  dinner: 'Dinner',
-};
 
 interface RitualForPdf {
   title: string;
@@ -112,8 +106,8 @@ export default function WeeklyPlannerPage() {
         const slot = slots.find(s => s.dayOfWeek === nextDay && s.mealType === meal);
         return {
           meal,
-          label: ({ breakfast: 'Breakfast', lunch: 'Lunch', snack: 'Afternoon Snack', dinner: 'Dinner' } as Record<string, string>)[meal] || meal,
-          emoji: MEAL_EMOJI[meal] || '🍽️',
+          label: MEAL_TYPE_LABELS[meal] || meal,
+          emoji: MEAL_TYPE_EMOJI[meal] || '🍽️',
           recipes: sr.map(r => ({ title: r.title, prepTimeMinutes: r.prepTimeMinutes })),
           entryType: slot?.entryType,
         };
@@ -185,6 +179,12 @@ export default function WeeklyPlannerPage() {
     const slot = slots.find(s => s.dayOfWeek === day && s.mealType === meal);
     if (!slot || slot.recipeIds.length === 0) return [];
     return slot.recipeIds.map(id => recipes.find(r => r.id === id)).filter(Boolean) as typeof recipes;
+  };
+
+  const getPlannerDateLabel = (dayIndex: number) => {
+    const date = new Date(currentMonday);
+    date.setDate(currentMonday.getDate() + dayIndex);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
   const openPicker = (day: DayOfWeek, meal: MealType) => {
@@ -298,6 +298,7 @@ export default function WeeklyPlannerPage() {
   const handleExportPdf = () => {
     generateWeeklyPlanPdf({
       weekLabel: formatWeekLabel(currentMonday),
+      weekStartDate: currentMonday,
       householdName: household?.name ?? 'Family',
       slots,
       recipes,
@@ -317,7 +318,7 @@ export default function WeeklyPlannerPage() {
       for (const meal of PLANNER_MEAL_TYPES) {
         const sr = getSlotRecipes(day, meal);
         if (sr.length > 0) {
-          dayMeals.push(`${MEAL_EMOJI[meal]} ${sr.map(r => r.title).join(', ')}`);
+          dayMeals.push(`${MEAL_TYPE_EMOJI[meal]} ${MEAL_TYPE_LABELS[meal]}: ${sr.map(r => r.title).join(', ')}`);
         }
       }
       if (dayMeals.length > 0) {
@@ -341,16 +342,23 @@ export default function WeeklyPlannerPage() {
     if (!bulkText.trim()) return;
     setBulkImporting(true);
     try {
-      const planId = await createWeeklyPlan(weekKey);
-      if (!planId) throw new Error('No plan');
-
       const slotEntries = parseWeeklyMenuText(bulkText);
       if (slotEntries.length === 0) {
-        throw new Error('Could not parse the pasted menu. Use day headers plus lines like "B: Poha" or "Breakfast: Poha".');
+        throw new Error('Could not parse the pasted menu. Use day headers plus lines like "PW: Shake", "B: Poha", "Mid: Tea", "L: Dal", "S: Fruit", and "D: Roti".');
       }
+
+      const planId = await createWeeklyPlan(weekKey);
+      if (!planId) throw new Error('Could not create weekly plan. Check that this session has planner access.');
 
       // Phase 2: Collect all unique dish names that need new recipes
       const allDishNames = [...new Set(slotEntries.flatMap(e => e.dishes))];
+      const dishMealMap = new Map<string, MealType>();
+      slotEntries.forEach(entry => {
+        entry.dishes.forEach(dish => {
+          const key = dish.toLowerCase();
+          if (!dishMealMap.has(key)) dishMealMap.set(key, entry.meal);
+        });
+      });
       const existingMap = new Map<string, string>(); // lowercase name → id
       recipes.forEach(r => existingMap.set(r.title.toLowerCase(), r.id));
 
@@ -362,7 +370,7 @@ export default function WeeklyPlannerPage() {
           household_id: householdId,
           title: dishName,
           description: '',
-          meal_types: ['lunch'] as any,
+          meal_types: [dishMealMap.get(dishName.toLowerCase()) ?? 'lunch'] as any,
           cuisine: 'Other',
           sub_cuisine: '',
           food_type: 'vegetarian' as any,
@@ -517,24 +525,26 @@ export default function WeeklyPlannerPage() {
                   : 'bg-muted text-muted-foreground border-transparent'
               }`}
             >
-              {MEAL_EMOJI[m]} {MEAL_LABELS[m]}
+              {MEAL_TYPE_EMOJI[m]} {MEAL_TYPE_SHORT_LABELS[m]}
             </button>
           ))}
         </div>
 
         {/* Grid */}
         <div className="overflow-x-auto">
-          <div style={{ minWidth: `${(visibleMeals.size + 1) * 160}px` }}>
-            <div className={`grid gap-2 mb-2`} style={{ gridTemplateColumns: `160px repeat(${visibleMeals.size}, 1fr)` }}>
+          <div style={{ minWidth: `${196 + visibleMeals.size * 150}px` }}>
+            <div className={`grid gap-2 mb-2`} style={{ gridTemplateColumns: `88px 108px repeat(${visibleMeals.size}, minmax(150px, 1fr))` }}>
+              <div className="font-semibold text-sm text-muted-foreground p-2">Date</div>
               <div className="font-semibold text-sm text-muted-foreground p-2">Day</div>
               {PLANNER_MEAL_TYPES.filter(m => visibleMeals.has(m)).map(m => (
                 <div key={m} className="font-semibold text-sm text-muted-foreground p-2 capitalize text-center">
-                  {MEAL_EMOJI[m]} {m}
+                  {MEAL_TYPE_EMOJI[m]} {MEAL_TYPE_SHORT_LABELS[m]}
                 </div>
               ))}
             </div>
-            {DAYS_OF_WEEK.map(day => (
-              <div key={day} className="grid gap-2 mb-2" style={{ gridTemplateColumns: `160px repeat(${visibleMeals.size}, 1fr)` }}>
+            {DAYS_OF_WEEK.map((day, dayIndex) => (
+              <div key={day} className="grid gap-2 mb-2" style={{ gridTemplateColumns: `88px 108px repeat(${visibleMeals.size}, minmax(150px, 1fr))` }}>
+                <div className="flex items-center p-2 text-sm text-muted-foreground">{getPlannerDateLabel(dayIndex)}</div>
                 <div className="flex items-center p-2 font-medium text-sm">{day}</div>
                 {PLANNER_MEAL_TYPES.filter(meal => visibleMeals.has(meal)).map(meal => {
                   const slotRecipes = getSlotRecipes(day, meal);
@@ -574,7 +584,7 @@ export default function WeeklyPlannerPage() {
         <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
           <DialogContent className="max-w-md max-h-[85vh] flex flex-col">
             <DialogHeader>
-              <DialogTitle className="capitalize">{MEAL_EMOJI[pickerMeal]} {pickerDay} — {pickerMeal}</DialogTitle>
+              <DialogTitle>{MEAL_TYPE_EMOJI[pickerMeal]} {pickerDay} — {MEAL_TYPE_LABELS[pickerMeal]}</DialogTitle>
             </DialogHeader>
             {getSlotRecipes(pickerDay, pickerMeal).length > 0 && (
               <div className="space-y-1 mb-3">
@@ -673,16 +683,12 @@ export default function WeeklyPlannerPage() {
             </p>
             <div className="text-xs bg-muted rounded-lg p-3 font-mono mb-3 whitespace-pre-wrap text-muted-foreground">
 {`Monday
-B: Poha, Chai
-L: Dal tadka, Jeera rice
-S: Fruit chaat
-D: Chicken curry, Roti
-
-Tuesday
-B: Omelette, Toast
-L: Rajma chawal
-S: Maggi
-D: Paneer bhurji, Roti`}
+PW: Cut fruits, Protein shake in water
+B: Idli, Sambhar
+Mid: Peppermint tea
+L: Falafel salad with hummus dressing
+S: Edamame, Sattu drink with lemon and salt
+D: Mixed vegetable with chickpea curry, Kodo millet pulav`}
             </div>
             <Textarea
               placeholder="Paste your week plan here..."

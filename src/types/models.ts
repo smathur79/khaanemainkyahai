@@ -28,8 +28,42 @@ export type Effort = 'quick' | 'medium' | 'weekend';
 export type MoodTag = 'comfort' | 'light' | 'kid-friendly' | 'adventurous' | 'hearty' | 'refreshing';
 
 export const DAYS_OF_WEEK: DayOfWeek[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-export const PLANNER_MEAL_TYPES: MealType[] = ['breakfast', 'lunch', 'snack', 'dinner'];
+export const PLANNER_MEAL_TYPES: MealType[] = [
+  'smoothie',
+  'breakfast',
+  'snack',
+  'lunch',
+  'dessert',
+  'dinner',
+];
 export const MEAL_TYPES: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack', 'smoothie', 'dessert'];
+
+export const MEAL_TYPE_LABELS: Record<MealType, string> = {
+  breakfast: 'Breakfast',
+  lunch: 'Lunch',
+  dinner: 'Dinner',
+  snack: 'Mid-morning',
+  smoothie: 'Post-workout',
+  dessert: 'Evening Snack',
+};
+
+export const MEAL_TYPE_SHORT_LABELS: Record<MealType, string> = {
+  breakfast: 'Breakfast',
+  lunch: 'Lunch',
+  dinner: 'Dinner',
+  snack: 'Mid AM',
+  smoothie: 'Post-workout',
+  dessert: 'Evening Snack',
+};
+
+export const MEAL_TYPE_EMOJI: Record<MealType, string> = {
+  breakfast: '🍳',
+  lunch: '🍚',
+  dinner: '🍽️',
+  smoothie: '🥤',
+  snack: '🍵',
+  dessert: '🍪',
+};
 export const CUISINES = [
   'Indian', 'Italian', 'Chinese', 'Mexican', 'Continental', 'Mediterranean',
   'Thai', 'Japanese', 'American', 'Middle Eastern', 'Korean', 'Global', 'Other',

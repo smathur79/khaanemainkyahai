@@ -1,6 +1,16 @@
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/context/AppContext';
-import { FamilyEvent, EventCategory, EVENT_CATEGORIES, DAYS_OF_WEEK, DayOfWeek } from '@/types/models';
+import {
+  FamilyEvent,
+  EventCategory,
+  EVENT_CATEGORIES,
+  DAYS_OF_WEEK,
+  DayOfWeek,
+  MealType,
+  PLANNER_MEAL_TYPES,
+  MEAL_TYPE_EMOJI,
+  MEAL_TYPE_LABELS,
+} from '@/types/models';
 import { getMonday, formatWeekLabel, formatDateKey, addWeeks } from '@/lib/dateUtils';
 import { buildFamilyEventCalendarDetails } from '@/lib/calendarText';
 import { Card } from '@/components/ui/card';
@@ -21,14 +31,14 @@ import { toast } from 'sonner';
 import { useDailyQuote, formatQuoteFooter } from '@/hooks/useDailyQuote';
 
 // ── constants ──────────────────────────────────────────────────────────────
-const MEAL_EMOJI: Record<string, string> = {
-  breakfast: '🍳',
-  lunch: '🍚',
-  snack: '🍪',
-  dinner: '🍽️',
+const MEAL_SORT_HOUR: Record<MealType, number> = {
+  smoothie: 7,
+  breakfast: 8,
+  snack: 10,
+  lunch: 13,
+  dessert: 16,
+  dinner: 19,
 };
-
-const MEAL_TYPES_ORDER = ['breakfast', 'lunch', 'snack', 'dinner'];
 
 const DAY_SHORT: Record<string, string> = {
   Monday: 'Mon', Tuesday: 'Tue', Wednesday: 'Wed', Thursday: 'Thu',
@@ -380,10 +390,10 @@ export default function FamilyCalendarPage() {
     for (const { day, events, slots } of weekDays) {
       text += `*${day}*\n`;
       // Meals line
-      const mealLine = MEAL_TYPES_ORDER.map(mt => {
+      const mealLine = PLANNER_MEAL_TYPES.map(mt => {
         const slot = slots.find(s => s.mealType === mt);
         if (!slot || slot.items.length === 0) return null;
-        return `${MEAL_EMOJI[mt]} ${slot.items.map(i => i.title).join(' + ')}`;
+        return `${MEAL_TYPE_EMOJI[mt]} ${slot.items.map(i => i.title).join(' + ')}`;
       }).filter(Boolean).join(' · ');
       if (mealLine) text += `${mealLine}\n`;
       // Events
@@ -413,16 +423,15 @@ export default function FamilyCalendarPage() {
 
     // Merge meals + events sorted by time
     type TimelineItem =
-      | { type: 'meal'; mealType: string; items: { title: string }[] }
+      | { type: 'meal'; mealType: MealType; items: { title: string }[] }
       | { type: 'event'; event: FamilyEvent };
 
-    const mealOrder: Record<string, number> = { breakfast: 7, lunch: 12, snack: 16, dinner: 19 };
     const timeline: (TimelineItem & { sortHour: number })[] = [];
 
-    for (const mt of MEAL_TYPES_ORDER) {
+    for (const mt of PLANNER_MEAL_TYPES) {
       const slot = daySlots.find(s => s.mealType === mt);
       if (slot && slot.items.length > 0) {
-        timeline.push({ type: 'meal', mealType: mt, items: slot.items, sortHour: mealOrder[mt] });
+        timeline.push({ type: 'meal', mealType: mt, items: slot.items, sortHour: MEAL_SORT_HOUR[mt] });
       }
     }
     for (const ev of events) {
@@ -459,9 +468,9 @@ export default function FamilyCalendarPage() {
                   return (
                     <Card key={`meal-${idx}`} className="card-warm p-4">
                       <div className="flex items-center gap-3">
-                        <span className="text-2xl">{MEAL_EMOJI[item.mealType]}</span>
+                        <span className="text-2xl">{MEAL_TYPE_EMOJI[item.mealType]}</span>
                         <div>
-                          <p className="text-xs text-muted-foreground capitalize">{item.mealType}</p>
+                          <p className="text-xs text-muted-foreground">{MEAL_TYPE_LABELS[item.mealType]}</p>
                           <p className="font-medium text-sm">{item.items.map(i => i.title).join(' · ')}</p>
                         </div>
                       </div>
@@ -593,10 +602,10 @@ export default function FamilyCalendarPage() {
                     {/* Meals row */}
                     {hasMeals && (
                       <p className="text-xs text-muted-foreground leading-relaxed">
-                        {MEAL_TYPES_ORDER.map(mt => {
+                        {PLANNER_MEAL_TYPES.map(mt => {
                           const slot = daySlots.find(s => s.mealType === mt);
                           if (!slot || slot.items.length === 0) return null;
-                          return `${MEAL_EMOJI[mt]} ${slot.items.map(i => i.title).join(' + ')}`;
+                          return `${MEAL_TYPE_EMOJI[mt]} ${slot.items.map(i => i.title).join(' + ')}`;
                         }).filter(Boolean).join('  ·  ')}
                       </p>
                     )}

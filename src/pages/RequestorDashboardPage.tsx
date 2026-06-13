@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MessageSquare, Sun, Calendar, ChefHat, Clock, CheckCircle2, Circle, Send } from 'lucide-react';
 import { getMonday, formatDateKey } from '@/lib/dateUtils';
-import { DAYS_OF_WEEK, PLANNER_MEAL_TYPES, DayOfWeek } from '@/types/models';
+import { DAYS_OF_WEEK, PLANNER_MEAL_TYPES, DayOfWeek, MEAL_TYPE_EMOJI, MEAL_TYPE_LABELS } from '@/types/models';
 import AppLayout from '@/components/AppLayout';
 import { motion } from 'framer-motion';
 
@@ -65,13 +65,6 @@ export default function RequestorDashboardPage() {
   const openRequests = myRequests.filter(r => r.status === 'open');
   const resolvedRequests = myRequests.filter(r => r.status !== 'open');
 
-  const mealIcon = (meal: string) => {
-    if (meal === 'breakfast') return '🌅';
-    if (meal === 'lunch') return '☀️';
-    if (meal === 'dinner') return '🌙';
-    return '🍽️';
-  };
-
   return (
     <AppLayout>
       <motion.div
@@ -95,11 +88,11 @@ export default function RequestorDashboardPage() {
               {todayMeals.map(({ meal, recipes: mealRecipes, entryType }) => (
                 <Card key={meal} className="card-warm p-4">
                   <div className="flex items-center gap-3">
-                    <span className="text-xl">{mealIcon(meal)}</span>
+                    <span className="text-xl">{MEAL_TYPE_EMOJI[meal]}</span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
                         <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground capitalize">
-                          {meal}
+                          {MEAL_TYPE_LABELS[meal]}
                         </span>
                         {entryType && entryType !== 'cooked' && (
                           <Badge variant="outline" className="text-xs capitalize">

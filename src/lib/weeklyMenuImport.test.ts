@@ -5,13 +5,17 @@ import { parseWeeklyMenuText } from './weeklyMenuImport';
 describe('parseWeeklyMenuText', () => {
   it('parses the compact planner format', () => {
     expect(parseWeeklyMenuText(`Monday
+PW: Cut fruits, Protein shake in water
 B: Poha, Chai
+Mid: Peppermint tea
 L: Dal tadka, Jeera rice
 S: Fruit chaat
 D: Chicken curry, Roti`)).toEqual([
+      { day: 'Monday', meal: 'smoothie', dishes: ['Cut fruits', 'Protein shake in water'] },
       { day: 'Monday', meal: 'breakfast', dishes: ['Poha', 'Chai'] },
+      { day: 'Monday', meal: 'snack', dishes: ['Peppermint tea'] },
       { day: 'Monday', meal: 'lunch', dishes: ['Dal tadka', 'Jeera rice'] },
-      { day: 'Monday', meal: 'snack', dishes: ['Fruit chaat'] },
+      { day: 'Monday', meal: 'dessert', dishes: ['Fruit chaat'] },
       { day: 'Monday', meal: 'dinner', dishes: ['Chicken curry', 'Roti'] },
     ]);
   });
@@ -24,7 +28,7 @@ Snack: Maggi (order in)
 Dinner: Paneer bhurji, Roti (eat out)`)).toEqual([
       { day: 'Tuesday', meal: 'breakfast', dishes: ['Omelette', 'Toast'] },
       { day: 'Tuesday', meal: 'lunch', dishes: ['Rajma chawal'] },
-      { day: 'Tuesday', meal: 'snack', dishes: ['Maggi'] },
+      { day: 'Tuesday', meal: 'dessert', dishes: ['Maggi'] },
       { day: 'Tuesday', meal: 'dinner', dishes: ['Paneer bhurji', 'Roti'] },
     ]);
   });

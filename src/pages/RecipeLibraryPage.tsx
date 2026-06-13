@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAppContext } from '@/context/AppContext';
-import { Recipe, MealType, CUISINES, RECIPE_FOOD_TYPES, MEAL_TYPES, HEALTH_TAGS, EFFORT_LEVELS, MOOD_TAGS } from '@/types/models';
+import { Recipe, MealType, CUISINES, RECIPE_FOOD_TYPES, MEAL_TYPES, MEAL_TYPE_LABELS, HEALTH_TAGS, EFFORT_LEVELS, MOOD_TAGS } from '@/types/models';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -110,7 +110,7 @@ export default function RecipeLibraryPage() {
             <SelectTrigger className="w-[120px]"><SelectValue placeholder="Meal" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All meals</SelectItem>
-              {MEAL_TYPES.map(m => <SelectItem key={m} value={m} className="capitalize">{m}</SelectItem>)}
+              {MEAL_TYPES.map(m => <SelectItem key={m} value={m}>{MEAL_TYPE_LABELS[m]}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={cuisineFilter} onValueChange={setCuisineFilter}>

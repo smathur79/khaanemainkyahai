@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAppContext } from '@/context/AppContext';
-import { MealType, MEAL_TYPES, CUISINES } from '@/types/models';
+import { MealType, MEAL_TYPES, MEAL_TYPE_LABELS, CUISINES } from '@/types/models';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -120,7 +120,7 @@ export default function AIGeneratorPage() {
               <Label>Meal Type</Label>
               <Select value={mealType} onValueChange={setMealType}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{MEAL_TYPES.map(m => <SelectItem key={m} value={m} className="capitalize">{m}</SelectItem>)}</SelectContent>
+                <SelectContent>{MEAL_TYPES.map(m => <SelectItem key={m} value={m}>{MEAL_TYPE_LABELS[m]}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div>

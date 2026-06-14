@@ -44,12 +44,18 @@ export default function WeeklyPlannerPage() {
   } = useAppContext();
   const { householdId } = useAuth();
   const dailyQuote = useDailyQuote();
-  const prepSyncEmails = useMemo(
-    () => familyMembers
-      .filter(member => member.receivesPrepSync && member.calendarEmail.trim())
-      .map(member => member.calendarEmail.trim()),
-    [familyMembers]
-  );
+  const prepSyncEmails = useMemo(() => {
+    const emails = new Set<string>();
+    familyMembers.forEach(member => {
+      const email = member.calendarEmail.trim();
+      const isPrepRecipient = member.receivesPrepSync
+        || member.calendarRole === 'parent_1'
+        || member.calendarRole === 'parent_2'
+        || member.label === 'Parent';
+      if (email && isPrepRecipient) emails.add(email);
+    });
+    return [...emails];
+  }, [familyMembers]);
 
   const [currentMonday, setCurrentMonday] = useState(() => getMonday(new Date()));
   const weekKey = formatDateKey(currentMonday);

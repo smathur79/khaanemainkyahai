@@ -13,7 +13,7 @@ import {
   MEAL_TYPE_SHORT_LABELS,
 } from '@/types/models';
 import { getMonday, formatWeekLabel, formatDateKey, addWeeks } from '@/lib/dateUtils';
-import { buildPrepPlanMessage, toCalendarDetailsText } from '@/lib/calendarText';
+import { buildPrepPlanMessage, toCalendarDetailsText, withWhatsAppTranslationPrefix } from '@/lib/calendarText';
 import { useDailyQuote, formatQuoteFooter } from '@/hooks/useDailyQuote';
 import { getRecommendations } from '@/lib/recommendations';
 import { Button } from '@/components/ui/button';
@@ -44,6 +44,12 @@ export default function WeeklyPlannerPage() {
   } = useAppContext();
   const { householdId } = useAuth();
   const dailyQuote = useDailyQuote();
+  const prepSyncEmails = useMemo(
+    () => familyMembers
+      .filter(member => member.receivesPrepSync && member.calendarEmail.trim())
+      .map(member => member.calendarEmail.trim()),
+    [familyMembers]
+  );
 
   const [currentMonday, setCurrentMonday] = useState(() => getMonday(new Date()));
   const weekKey = formatDateKey(currentMonday);
@@ -116,7 +122,15 @@ export default function WeeklyPlannerPage() {
       const message = buildPrepPlanMessage({ dayLabel: nextDay, dateLabel, nightPrep, morningPrep, meals });
       const details = toCalendarDetailsText(message + formatQuoteFooter(dailyQuote));
 
-      const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`🍽️ Meal Prep — ${nextDay}`)}&dates=${fmt(date)}/${fmt(end)}&details=${encodeURIComponent(details)}`;
+      const params = new URLSearchParams({
+        action: 'TEMPLATE',
+        text: `🍽️ Meal Prep — ${nextDay}`,
+        dates: `${fmt(date)}/${fmt(end)}`,
+        details,
+      });
+      prepSyncEmails.forEach(email => params.append('add', email));
+
+      const url = `https://calendar.google.com/calendar/render?${params.toString()}`;
       return { day, url, nextDay, nextDayIndex };
     });
     // Sort so first entry is "Prep for Monday (Sunday night)", then Tuesday, ..., Sunday
@@ -327,7 +341,7 @@ export default function WeeklyPlannerPage() {
         lines.push('');
       }
     }
-    return lines.join('\n') + formatQuoteFooter(dailyQuote);
+    return withWhatsAppTranslationPrefix(lines.join('\n') + formatQuoteFooter(dailyQuote));
   }, [slots, recipes, currentMonday, household, dailyQuote]);
 
   const handleCopyWeek = () => {
@@ -652,6 +666,15 @@ export default function WeeklyPlannerPage() {
               <DialogTitle>Calendar Sync</DialogTitle>
             </DialogHeader>
             <p className="text-sm text-muted-foreground">Click each day to add it to Google Calendar.</p>
+            {prepSyncEmails.length > 0 ? (
+              <p className="text-xs text-muted-foreground">
+                Invites: {prepSyncEmails.join(', ')}
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                No prep sync recipients found in Settings.
+              </p>
+            )}
             <div className="space-y-2 mt-2">
               {calLinks.map(({ day, nextDay, url }) => (
                 <a

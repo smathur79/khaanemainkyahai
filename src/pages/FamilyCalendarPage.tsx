@@ -12,7 +12,7 @@ import {
   MEAL_TYPE_LABELS,
 } from '@/types/models';
 import { getMonday, formatWeekLabel, formatDateKey, addWeeks } from '@/lib/dateUtils';
-import { buildFamilyEventCalendarDetails } from '@/lib/calendarText';
+import { buildFamilyEventCalendarDetails, withWhatsAppTranslationPrefix } from '@/lib/calendarText';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -404,7 +404,7 @@ export default function FamilyCalendarPage() {
       }
       text += '\n';
     }
-    return text.trim() + formatQuoteFooter(dailyQuote);
+    return withWhatsAppTranslationPrefix(text.trim() + formatQuoteFooter(dailyQuote));
   };
 
   const handleWhatsAppCopy = async () => {

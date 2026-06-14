@@ -1,5 +1,11 @@
 import type { FamilyEvent } from '@/types/models';
 
+export const WHATSAPP_TRANSLATION_PREFIX = '@meta ai translate to hindi';
+
+export function withWhatsAppTranslationPrefix(text: string): string {
+  return `${WHATSAPP_TRANSLATION_PREFIX}\n\n${text}`;
+}
+
 interface PrepMealEntry {
   meal: string;
   label: string;

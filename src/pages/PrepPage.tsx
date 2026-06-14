@@ -4,7 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { PLANNER_MEAL_TYPES, DayOfWeek, DAYS_OF_WEEK } from '@/types/models';
 import { getMonday, formatDateKey } from '@/lib/dateUtils';
-import { buildPrepPlanMessage, toCalendarDetailsText } from '@/lib/calendarText';
+import { buildPrepPlanMessage, toCalendarDetailsText, withWhatsAppTranslationPrefix } from '@/lib/calendarText';
 import { useDailyQuote, formatQuoteFooter } from '@/hooks/useDailyQuote';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -139,7 +139,7 @@ export default function PrepPage() {
       })),
       notes,
     });
-    return message + formatQuoteFooter(dailyQuote);
+    return withWhatsAppTranslationPrefix(message + formatQuoteFooter(dailyQuote));
   }, [selectedMeals, nightRituals, morningRituals, needsSoak, needsThaw, needsEarlyStart, notes, selectedDay, selectedDateLabel, dailyQuote]);
 
   const handleCopy = () => {

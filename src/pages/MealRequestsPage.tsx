@@ -20,6 +20,7 @@ import AppLayout from '@/components/AppLayout';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useDailyQuote, formatQuoteFooter } from '@/hooks/useDailyQuote';
+import { withWhatsAppTranslationPrefix } from '@/lib/calendarText';
 
 interface MealRequest {
   id: string;
@@ -108,7 +109,7 @@ function FamilyMemberView() {
       lines.push(sr.length > 0 ? sr.map(t => `• ${t}`).join('\n') : '• Not planned');
       lines.push('');
     }
-    return lines.join('\n') + formatQuoteFooter(dailyQuote);
+    return withWhatsAppTranslationPrefix(lines.join('\n') + formatQuoteFooter(dailyQuote));
   }, [tomorrowSlots, recipes, rituals, tomorrowDay, tomorrowFormatted, dailyQuote]);
 
   return (

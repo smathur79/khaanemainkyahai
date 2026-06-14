@@ -54,9 +54,17 @@ function toFamilyMember(m: any): FamilyMember {
     preferredCuisines: m.preferred_cuisines ?? [],
     notes: m.notes,
     calendarRole: (m.calendar_role ?? 'unassigned') as any,
-    calendarEmail: m.calendar_email ?? '',
+    calendarEmail: m.calendar_email ?? m.email ?? '',
     receivesPrepSync: m.receives_prep_sync ?? false,
   };
+}
+
+function isMissingCalendarMemberColumns(error: any): boolean {
+  const text = `${error?.message ?? ''} ${error?.details ?? ''} ${error?.hint ?? ''}`.toLowerCase();
+  return text.includes('calendar_role')
+    || text.includes('calendar_email')
+    || text.includes('receives_prep_sync')
+    || text.includes('schema cache');
 }
 
 function toSlot(s: any, items: any[]): WeeklyMealSlot {
@@ -276,8 +284,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // ── family members ─────────────────────────────────────
   const addFamilyMember = useCallback(async (member: Omit<FamilyMember, 'id' | 'householdId'>) => {
-    if (!householdId) return;
-    const newMember = {
+    if (!householdId) throw new Error('No household is loaded for this session.');
+    const baseMember = {
       household_id: householdId,
       name: member.name,
       label: member.label as any,
@@ -288,11 +296,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       spice_level: member.spiceLevel as any,
       preferred_cuisines: member.preferredCuisines,
       notes: member.notes,
+    };
+    const newMember = {
+      ...baseMember,
       calendar_role: member.calendarRole,
       calendar_email: member.calendarEmail,
       receives_prep_sync: member.receivesPrepSync,
     };
-    await supabase.from('family_members').insert(newMember as any);
+    const { error } = await supabase.from('family_members').insert(newMember as any);
+    if (error) {
+      if (!isMissingCalendarMemberColumns(error)) throw new Error(error.message);
+      const { error: fallbackError } = await supabase.from('family_members').insert({
+        ...baseMember,
+        email: member.calendarEmail,
+      } as any);
+      if (fallbackError) throw new Error(fallbackError.message);
+    }
     await refreshData();
   }, [householdId, refreshData]);
 
@@ -310,12 +329,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (updates.calendarRole !== undefined) dbUpdates.calendar_role = updates.calendarRole;
     if (updates.calendarEmail !== undefined) dbUpdates.calendar_email = updates.calendarEmail;
     if (updates.receivesPrepSync !== undefined) dbUpdates.receives_prep_sync = updates.receivesPrepSync;
-    await supabase.from('family_members').update(dbUpdates).eq('id', id);
+    const { error } = await supabase.from('family_members').update(dbUpdates).eq('id', id);
+    if (error) {
+      if (!isMissingCalendarMemberColumns(error)) throw new Error(error.message);
+      const fallbackUpdates = { ...dbUpdates };
+      delete fallbackUpdates.calendar_role;
+      delete fallbackUpdates.calendar_email;
+      delete fallbackUpdates.receives_prep_sync;
+      if (updates.calendarEmail !== undefined) fallbackUpdates.email = updates.calendarEmail;
+      const { error: fallbackError } = await supabase.from('family_members').update(fallbackUpdates).eq('id', id);
+      if (fallbackError) throw new Error(fallbackError.message);
+    }
     await refreshData();
   }, [refreshData]);
 
   const removeFamilyMember = useCallback(async (id: string) => {
-    await supabase.from('family_members').delete().eq('id', id);
+    const { error } = await supabase.from('family_members').delete().eq('id', id);
+    if (error) throw new Error(error.message);
     await refreshData();
   }, [refreshData]);
 
